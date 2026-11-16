@@ -1,0 +1,2628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeroLoan — Personal Loan & Ledger Manager (NPR)</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS (XLSX) via CDN for real Excel (.xlsx) workbook export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans Devanagari', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom subtle scrollbars and smooth transitions */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.18s ease-out;
+        }
+        .modal-panel {
+            animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .bs-picker-popover {
+            animation: fadeIn 0.14s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(14px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 flex items-center justify-center text-white shadow-md shadow-indigo-200 shrink-0">
+                    <i data-lucide="wallet" class="w-5 h-5"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h1 id="hdr-brand-title" class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 truncate">Mero<span class="text-indigo-600">Loan</span></h1>
+                        <span id="hdr-currency-badge" class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">BS</span>
+                    </div>
+                    <p id="hdr-subtitle" class="text-xs text-slate-500 hidden sm:block truncate">Smart Debit, Credit & Interest To-Do Ledger (BS Calendar)</p>
+                </div>
+            </div>
+
+            <!-- Header Actions -->
+            <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+                <!-- Today's BS Date Pill -->
+                <div id="hdr-today-bs" class="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200/80">
+                    <i data-lucide="calendar-days" class="w-3.5 h-3.5 text-indigo-600"></i>
+                    <span id="hdr-today-bs-text">2083-08-01</span>
+                </div>
+
+                <!-- Language Switcher Toggle (EN / नेपाली) -->
+                <div class="inline-flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200" role="group" aria-label="Language Switch">
+                    <button type="button" id="lang-btn-en" onclick="setLanguage('en')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-indigo-600 text-white shadow-sm">
+                        EN
+                    </button>
+                    <button type="button" id="lang-btn-ne" onclick="setLanguage('ne')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
+                        नेपाली
+                    </button>
+                </div>
+
+                <button type="button" id="btn-export-all" onclick="downloadAllLedgersExcel()" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4 shrink-0"></i>
+                    <span id="btn-export-all-desktop" class="hidden md:inline">Download All Ledgers (.xlsx)</span>
+                    <span id="btn-export-all-mobile" class="md:hidden">Excel</span>
+                </button>
+                <button type="button" id="btn-reset-demo" onclick="resetDemoData()" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span id="btn-reset-demo-text" class="hidden lg:inline">Reset Demo</span>
+                </button>
+                <button type="button" id="btn-add-loan-hdr" onclick="openAddModal()" class="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-sm shadow-indigo-200 transition">
+                    <i data-lucide="plus-circle" class="w-4 h-4 shrink-0"></i>
+                    <span id="btn-add-loan-hdr-text">Add Loan</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast / Notification Banner Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+
+        <!-- 1. Dashboard Summary Overview Cards -->
+        <section aria-label="Financial Overview" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Receivable (Credit / Lent) -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <span id="kpi-credit-badge" class="text-xs font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">Credit (To Receive)</span>
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center">
+                        <i data-lucide="arrow-down-left" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p id="stat-receivable" class="text-2xl font-extrabold text-slate-900 tracking-tight">Rs. 0</p>
+                    <p id="stat-receivable-sub" class="text-xs text-slate-500 mt-1">Remaining from lent loans</p>
+                </div>
+            </div>
+
+            <!-- Total Payable (Debit / Borrowed) -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <span id="kpi-debit-badge" class="text-xs font-semibold uppercase tracking-wider text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg">Debit (To Pay)</span>
+                    <div class="w-9 h-9 rounded-xl bg-rose-100/70 text-rose-600 flex items-center justify-center">
+                        <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p id="stat-payable" class="text-2xl font-extrabold text-slate-900 tracking-tight">Rs. 0</p>
+                    <p id="stat-payable-sub" class="text-xs text-slate-500 mt-1">Remaining to pay back</p>
+                </div>
+            </div>
+
+            <!-- Total Accrued Interest -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <span id="kpi-interest-badge" class="text-xs font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg">Accrued Interest</span>
+                    <div class="w-9 h-9 rounded-xl bg-amber-100/70 text-amber-600 flex items-center justify-center">
+                        <i data-lucide="percent" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p id="stat-interest" class="text-2xl font-extrabold text-slate-900 tracking-tight">Rs. 0</p>
+                    <p id="stat-interest-sub" class="text-xs text-slate-500 mt-1">Calculated across active loans</p>
+                </div>
+            </div>
+
+            <!-- Net Balance -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <span id="kpi-net-badge" class="text-xs font-semibold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg">Net Position</span>
+                    <div class="w-9 h-9 rounded-xl bg-indigo-100/70 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="scale" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p id="stat-net" class="text-2xl font-extrabold text-slate-900 tracking-tight">Rs. 0</p>
+                    <p id="stat-net-sub" class="text-xs text-slate-500 mt-1">Receivable minus Payable</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Main Layout Grid: Quick Add Form (Desktop Sidebar) + Interactive To-Do Loan Ledger -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- Left Column: Quick Add Loan / Transaction Form (Visible on Desktop, Modal on Mobile) -->
+            <aside class="hidden lg:block lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sticky top-24">
+                <div class="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="file-plus-2" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h2 id="form-d-heading" class="text-base font-bold text-slate-900">New Loan Entry</h2>
+                        <p id="form-d-sub" class="text-xs text-slate-500">Add a debit or credit in Bikram Sambat (BS)</p>
+                    </div>
+                </div>
+
+                <form id="desktop-loan-form" onsubmit="handleFormSubmit(event, 'desktop')" class="mt-5 space-y-4">
+                    <!-- Transaction Type Toggle -->
+                    <div>
+                        <label id="form-d-type-label" class="block text-xs font-semibold text-slate-700 mb-1.5">Transaction Type</label>
+                        <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="type" value="credit" onchange="updateFormLabels('desktop')" class="peer sr-only" checked>
+                                <div id="form-d-credit-opt" class="text-center py-2 px-2.5 rounded-lg text-xs font-semibold text-slate-600 peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:shadow-sm transition">
+                                    Credit (Given / Lent)
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="type" value="debit" onchange="updateFormLabels('desktop')" class="peer sr-only">
+                                <div id="form-d-debit-opt" class="text-center py-2 px-2.5 rounded-lg text-xs font-semibold text-slate-600 peer-checked:bg-rose-600 peer-checked:text-white peer-checked:shadow-sm transition">
+                                    Debit (Taken / Owe)
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Loan Giver / Person Name -->
+                    <div>
+                        <label id="form-d-person-label" for="d-person" class="block text-xs font-semibold text-slate-700 mb-1">Loan Giver / Person Name *</label>
+                        <input id="d-person" name="personName" type="text" required placeholder="e.g., Aarav Sharma" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                    </div>
+
+                    <!-- Principal & Interest Rate -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label id="form-d-principal-label" for="d-principal" class="block text-xs font-semibold text-slate-700 mb-1">Principal (Rs.) *</label>
+                            <input id="d-principal" name="principal" type="number" min="1" step="any" required placeholder="50000" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                        </div>
+                        <div>
+                            <label id="form-d-rate-label" for="d-rate" class="block text-xs font-semibold text-slate-700 mb-1">Interest (% / yr) *</label>
+                            <input id="d-rate" name="interestRate" type="number" min="0" max="200" step="0.1" value="12" required placeholder="12" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                        </div>
+                    </div>
+
+                    <!-- Loan Given/Received BS Date & Due BS Date -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="relative">
+                            <label id="d-start-label" for="d-start-display" class="block text-xs font-semibold text-slate-700 mb-1">Loan Given Date (BS) *</label>
+                            <input type="hidden" id="d-start" name="startDate" required>
+                            <button type="button" id="d-start-display" onclick="openBsPicker('d-start', this)" class="w-full px-3 py-2.5 text-left text-xs font-semibold bg-slate-50 hover:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-between gap-1.5 transition">
+                                <span id="d-start-text" class="truncate text-slate-800">2083-08-01</span>
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-600 shrink-0"></i>
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <label id="form-d-due-label" for="d-due-display" class="block text-xs font-semibold text-slate-700 mb-1">Due Date (BS)</label>
+                            <input type="hidden" id="d-due" name="dueDate">
+                            <button type="button" id="d-due-display" onclick="openBsPicker('d-due', this, true)" class="w-full px-3 py-2.5 text-left text-xs font-semibold bg-slate-50 hover:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-between gap-1.5 transition">
+                                <span id="d-due-text" class="truncate text-slate-800">2083-09-01</span>
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Initial Paid/Received Amount -->
+                    <div>
+                        <label id="d-paid-label" for="d-paid" class="block text-xs font-semibold text-slate-700 mb-1">Initial Received Amount (Rs.)</label>
+                        <input id="d-paid" name="paidAmount" type="number" min="0" step="any" value="0" placeholder="0" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                    </div>
+
+                    <!-- Due Date / Installment Note -->
+                    <div>
+                        <label id="form-d-note-label" for="d-note" class="block text-xs font-semibold text-slate-700 mb-1">Installment / Purpose Note</label>
+                        <input id="d-note" name="note" type="text" placeholder="e.g., Monthly EMI on 15th / Dashain settlement" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                    </div>
+
+                    <button id="form-d-submit-btn" type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-200 flex items-center justify-center gap-2 transition">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span id="form-d-submit-text">Add to Loan To-Do List</span>
+                    </button>
+                </form>
+            </aside>
+
+            <!-- Right Column: To-Do List / Active Repayment Tracker -->
+            <section class="lg:col-span-8 space-y-4">
+                <!-- Controls Header: Filter Tabs & Search Bar -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="list-checks" class="w-5 h-5 text-indigo-600"></i>
+                                <span id="todo-section-title">Loan Repayment To-Do List</span>
+                            </h2>
+                            <p id="todo-section-sub" class="text-xs text-slate-500">Check off settled loans or click <strong class="text-slate-700">More</strong> for full interest breakdown & BS payment logs.</p>
+                        </div>
+
+                        <!-- Search Input -->
+                        <div class="relative w-full sm:w-64">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            <input id="search-input" type="text" oninput="handleSearch(this.value)" placeholder="Search person name..." class="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        </div>
+                    </div>
+
+                    <!-- Filter Tabs -->
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 border-t border-slate-100" role="tablist">
+                        <button onclick="setFilter('all')" data-filter="all" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition bg-indigo-600 text-white shadow-sm">
+                            <span id="tab-label-all">All</span> (<span id="count-all">0</span>)
+                        </button>
+                        <button onclick="setFilter('debit')" data-filter="debit" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                            <span id="tab-label-debit">Debit — To Pay</span> (<span id="count-debit">0</span>)
+                        </button>
+                        <button onclick="setFilter('credit')" data-filter="credit" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                            <span id="tab-label-credit">Credit — To Receive</span> (<span id="count-credit">0</span>)
+                        </button>
+                        <button onclick="setFilter('overdue')" data-filter="overdue" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                            <span id="tab-label-overdue">Overdue</span> (<span id="count-overdue">0</span>)
+                        </button>
+                        <button onclick="setFilter('settled')" data-filter="settled" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                            <span id="tab-label-settled">Completed / Settled</span> (<span id="count-settled">0</span>)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- To-Do List Items Container -->
+                <div id="loan-todo-list" class="space-y-3">
+                    <!-- Dynamic To-Do Loan Cards rendered here -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p id="footer-left"><strong class="text-slate-700">MeroLoan</strong> — Personal Loan & Ledger Tracker - Bijay Khanal</p>
+            <p id="footer-right">All records are saved securely in your browser's local storage.</p>
+        </div>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- POP-UP MODAL 1: "MORE" FULL DETAILS & PAYMENT ACTIONS MODAL           -->
+    <!-- ===================================================================== -->
+    <div id="more-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-person-title">
+        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden modal-panel">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div id="modal-avatar" class="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 font-bold text-base flex items-center justify-center shrink-0">
+                        RS
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h3 id="modal-person-title" class="text-lg font-extrabold text-slate-900 truncate">Person Name</h3>
+                            <span id="modal-type-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full">Credit</span>
+                            <span id="modal-status-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full">Pending</span>
+                        </div>
+                        <p id="modal-note-subtitle" class="text-xs text-slate-500 truncate mt-0.5">Note details</p>
+                    </div>
+                </div>
+                <button onclick="closeMoreModal()" aria-label="Close modal" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition shrink-0">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-6 overflow-y-auto space-y-6">
+                <!-- Complete Financial Breakdown Grid -->
+                <div>
+                    <h4 id="detail-section-heading" class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Complete Loan & Interest Breakdown (BS)</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
+                            <span id="detail-start-label" class="text-[11px] font-medium text-slate-500 block">Loan Given Date (BS)</span>
+                            <span id="detail-start-val" class="text-sm font-extrabold text-slate-900 mt-0.5 block">—</span>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
+                            <span id="detail-due-label" class="text-[11px] font-medium text-slate-500 block">Due / Settlement Date (BS)</span>
+                            <span id="detail-due-val" class="text-sm font-extrabold text-slate-900 mt-0.5 block">—</span>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
+                            <span id="detail-days-label" class="text-[11px] font-medium text-slate-500 block">Duration Elapsed</span>
+                            <span id="detail-days" class="text-sm font-extrabold text-slate-900 mt-0.5 block">0 Days</span>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
+                            <span id="detail-principal-label" class="text-[11px] font-medium text-slate-500 block">Principal Amount</span>
+                            <span id="detail-principal" class="text-base font-extrabold text-slate-900 mt-0.5 block">Rs. 0</span>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80">
+                            <span id="detail-interest-label" class="text-[11px] font-semibold text-amber-800 block">Accrued Interest (0%)</span>
+                            <span id="detail-interest" class="text-base font-extrabold text-amber-700 mt-0.5 block">Rs. 0</span>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-indigo-50/80 border border-indigo-200/80">
+                            <span id="detail-total-label" class="text-[11px] font-semibold text-indigo-800 block">Total Receivable</span>
+                            <span id="detail-total" class="text-base font-extrabold text-indigo-700 mt-0.5 block">Rs. 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Paid vs Remaining Summary Strip -->
+                    <div class="mt-3 p-4 rounded-2xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-center gap-6">
+                            <div>
+                                <span id="detail-paid-label" class="text-[11px] text-emerald-400 uppercase tracking-wider font-semibold block">Received So Far</span>
+                                <p id="detail-paid" class="text-lg font-extrabold text-emerald-300 mt-0.5">Rs. 0</p>
+                            </div>
+                            <div class="h-8 w-px bg-slate-700"></div>
+                            <div>
+                                <span id="detail-remaining-label" class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold block">Remaining Balance</span>
+                                <p id="detail-remaining" class="text-xl font-extrabold tracking-tight text-white mt-0.5">Rs. 0</p>
+                            </div>
+                        </div>
+                        <div class="w-full sm:w-44">
+                            <div class="flex justify-between text-xs mb-1.5">
+                                <span id="detail-progress-label" class="text-slate-300">Progress</span>
+                                <span id="detail-progress-pct" class="font-bold text-emerald-400">0%</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                                <div id="detail-progress-bar" class="h-full bg-emerald-400 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Record a New Payment / Receipt Section -->
+                <div id="record-payment-box" class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-900 mb-2.5 flex items-center gap-1.5">
+                        <i data-lucide="banknote" class="w-4 h-4 text-indigo-600"></i>
+                        <span id="record-payment-heading-text">Record a Payment / Receipt</span>
+                    </h4>
+                    <form id="record-payment-form" onsubmit="handleRecordPayment(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                        <div class="sm:col-span-4">
+                            <label id="payment-amount-label" for="payment-amount-input" class="block text-[11px] font-semibold text-slate-600 mb-1">Amount (Rs.) *</label>
+                            <input id="payment-amount-input" type="number" min="1" step="any" required placeholder="e.g. 10000" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="sm:col-span-4">
+                            <label id="payment-date-label" for="payment-date-display" class="block text-[11px] font-semibold text-slate-600 mb-1">Date Paid / Received (BS) *</label>
+                            <input type="hidden" id="payment-date-input" required>
+                            <button type="button" id="payment-date-display" onclick="openBsPicker('payment-date-input', this)" class="w-full px-3 py-2 text-left text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-between gap-1.5 transition">
+                                <span id="payment-date-input-text" class="truncate text-slate-800">2083-08-01</span>
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-600 shrink-0"></i>
+                            </button>
+                        </div>
+                        <div class="sm:col-span-4">
+                            <label id="payment-note-label" for="payment-note-input" class="block text-[11px] font-semibold text-slate-600 mb-1">Method / Note</label>
+                            <input id="payment-note-input" type="text" placeholder="eSewa, Cash, Bank" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="sm:col-span-12 flex justify-end pt-1">
+                            <button id="record-payment-btn" type="submit" class="w-full sm:w-auto px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition">
+                                Save Payment / Receipt
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Payment / Receipt History Log -->
+                <div>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h4 id="history-log-heading" class="text-xs font-bold uppercase tracking-wider text-slate-400">Payment / Receipt History (BS)</h4>
+                        <span id="detail-payment-count" class="text-xs font-medium text-slate-500">0 entries</span>
+                    </div>
+                    <div id="payment-history-list" class="space-y-2 max-h-44 overflow-y-auto pr-1">
+                        <!-- Payment history rows injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button id="modal-delete-btn" type="button" onclick="confirmDeleteCurrentLoan()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        <span>Delete Record</span>
+                    </button>
+                    <button id="modal-excel-btn" type="button" onclick="downloadCurrentPersonExcel()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-xl transition">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                        <span id="modal-excel-btn-text">Download Excel Ledger (.xlsx)</span>
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="modal-toggle-settle-btn" type="button" onclick="toggleSettleCurrentLoan()" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition">
+                        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                        <span>Mark as Settled</span>
+                    </button>
+                    <button id="modal-close-btn" type="button" onclick="closeMoreModal()" class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-xl transition">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- POP-UP MODAL 2: ADD NEW LOAN MODAL (For Mobile & Header Button)       -->
+    <!-- ===================================================================== -->
+    <div id="add-loan-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
+        <div class="bg-white rounded-3xl max-w-md w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden modal-panel">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    </div>
+                    <h3 id="add-modal-title" class="text-base font-bold text-slate-900">Add New Loan Entry (BS)</h3>
+                </div>
+                <button onclick="closeAddModal()" aria-label="Close modal" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="modal-loan-form" onsubmit="handleFormSubmit(event, 'modal')" class="p-6 overflow-y-auto space-y-4">
+                <div>
+                    <label id="form-m-type-label" class="block text-xs font-semibold text-slate-700 mb-1.5">Transaction Type</label>
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="type" value="credit" onchange="updateFormLabels('modal')" class="peer sr-only" checked>
+                            <div id="form-m-credit-opt" class="text-center py-2 px-3 rounded-lg text-xs font-semibold text-slate-600 peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:shadow-sm transition">
+                                Credit (Given / Lent)
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="type" value="debit" onchange="updateFormLabels('modal')" class="peer sr-only">
+                            <div id="form-m-debit-opt" class="text-center py-2 px-3 rounded-lg text-xs font-semibold text-slate-600 peer-checked:bg-rose-600 peer-checked:text-white peer-checked:shadow-sm transition">
+                                Debit (Taken / Owe)
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label id="form-m-person-label" for="m-person" class="block text-xs font-semibold text-slate-700 mb-1">Loan Giver / Person Name *</label>
+                    <input id="m-person" name="personName" type="text" required placeholder="e.g., Aarav Sharma" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label id="form-m-principal-label" for="m-principal" class="block text-xs font-semibold text-slate-700 mb-1">Principal (Rs.) *</label>
+                        <input id="m-principal" name="principal" type="number" min="1" step="any" required placeholder="50000" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label id="form-m-rate-label" for="m-rate" class="block text-xs font-semibold text-slate-700 mb-1">Interest (% / yr) *</label>
+                        <input id="m-rate" name="interestRate" type="number" min="0" max="200" step="0.1" value="12" required class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label id="m-start-label" for="m-start-display" class="block text-xs font-semibold text-slate-700 mb-1">Loan Given Date (BS) *</label>
+                        <input type="hidden" id="m-start" name="startDate" required>
+                        <button type="button" id="m-start-display" onclick="openBsPicker('m-start', this)" class="w-full px-3 py-2.5 text-left text-xs font-semibold bg-slate-50 hover:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-50 flex items-center justify-between gap-1.5 transition">
+                            <span id="m-start-text" class="truncate text-slate-800">2083-08-01</span>
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-600 shrink-0"></i>
+                        </button>
+                    </div>
+                    <div>
+                        <label id="form-m-due-label" for="m-due-display" class="block text-xs font-semibold text-slate-700 mb-1">Due Date (BS)</label>
+                        <input type="hidden" id="m-due" name="dueDate">
+                        <button type="button" id="m-due-display" onclick="openBsPicker('m-due', this, true)" class="w-full px-3 py-2.5 text-left text-xs font-semibold bg-slate-50 hover:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-50 flex items-center justify-between gap-1.5 transition">
+                            <span id="m-due-text" class="truncate text-slate-800">2083-09-01</span>
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label id="m-paid-label" for="m-paid" class="block text-xs font-semibold text-slate-700 mb-1">Initial Received Amount (Rs.)</label>
+                    <input id="m-paid" name="paidAmount" type="number" min="0" step="any" value="0" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div>
+                    <label id="form-m-note-label" for="m-note" class="block text-xs font-semibold text-slate-700 mb-1">Installment / Purpose Note</label>
+                    <input id="m-note" name="note" type="text" placeholder="e.g., Monthly installment on 15th" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="pt-2 flex items-center gap-2">
+                    <button id="form-m-cancel-btn" type="button" onclick="closeAddModal()" class="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition">
+                        Cancel
+                    </button>
+                    <button id="form-m-submit-btn" type="submit" class="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition">
+                        Save Loan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- POP-UP MODAL 3: BIKRAM SAMBAT (BS) NEPALI DATE PICKER (2000–2099 BS)  -->
+    <!-- ===================================================================== -->
+    <div id="bs-picker-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 bg-slate-900/40 bs-picker-popover" role="dialog" aria-modal="true" aria-label="Bikram Sambat Nepali Date Picker">
+        <div class="bg-white rounded-2xl w-80 max-w-full shadow-2xl border border-slate-200 overflow-hidden modal-panel">
+            <!-- Picker Header: Month & Year Selectors (2000 - 2099 BS) -->
+            <div class="px-3.5 py-3 bg-indigo-600 text-white flex items-center justify-between gap-1.5">
+                <button type="button" onclick="shiftBsPickerMonth(-1)" title="Previous Month" class="p-1.5 rounded-lg hover:bg-indigo-500 transition">
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+                <div class="flex items-center gap-1.5 flex-1 justify-center">
+                    <select id="bs-picker-month" onchange="onBsPickerDropdownChange()" class="bg-indigo-700 text-white text-xs font-bold px-2 py-1.5 rounded-lg border border-indigo-500 focus:outline-none cursor-pointer">
+                    </select>
+                    <select id="bs-picker-year" onchange="onBsPickerDropdownChange()" class="bg-indigo-700 text-white text-xs font-bold px-2 py-1.5 rounded-lg border border-indigo-500 focus:outline-none cursor-pointer">
+                    </select>
+                </div>
+                <button type="button" onclick="shiftBsPickerMonth(1)" title="Next Month" class="p-1.5 rounded-lg hover:bg-indigo-500 transition">
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Weekday Headers -->
+            <div id="bs-picker-weekdays" class="grid grid-cols-7 gap-1 px-3 pt-3 pb-1 text-center text-[11px] font-bold text-slate-400">
+            </div>
+
+            <!-- Days Grid -->
+            <div id="bs-picker-days" class="grid grid-cols-7 gap-1 px-3 pb-3 text-center">
+            </div>
+
+            <!-- Picker Footer -->
+            <div class="px-3.5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
+                <button type="button" id="bs-picker-today-btn" onclick="selectBsPickerToday()" class="px-2.5 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
+                    Today (BS)
+                </button>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" id="bs-picker-clear-btn" onclick="clearBsPickerDate()" class="hidden px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition">
+                        Clear
+                    </button>
+                    <button type="button" id="bs-picker-close-btn" onclick="closeBsPicker()" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Storage Keys & State
+        const STORAGE_KEY = 'meroloan_ledger_bs_v3';
+        const LANG_STORAGE_KEY = 'meroloan_lang_v1';
+        let currentLang = 'en'; // 'en' or 'ne'
+        let loans = [];
+        let activeFilter = 'all';
+        let searchQuery = '';
+        let activeModalLoanId = null;
+        let pendingDeleteId = null;
+
+        // =========================================================================
+        // COMPLETE BIKRAM SAMBAT (BS) CALENDAR MAP: 2000 BS TO 2099 BS
+        // Anchor Reference: 2000-01-01 BS == 1943-04-14 AD (Wednesday)
+        // Each entry holds exact day counts for [Baishakh..Chaitra] (12 months)
+        // =========================================================================
+        const BS_ANCHOR_AD = { year: 1943, month: 4, day: 14 }; // 2000-01-01 BS
+        const BS_MIN_YEAR = 2000;
+        const BS_MAX_YEAR = 2099;
+
+        const BS_CALENDAR_MAP = {
+            2000: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2001: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2002: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2003: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2004: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2005: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2006: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2007: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2008: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 29, 31],
+            2009: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2010: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2011: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2012: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+            2013: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2014: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2015: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2016: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+            2017: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2018: [31, 32, 31, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2019: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2020: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+            2021: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2022: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+            2023: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2024: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+            2025: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2026: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2027: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2028: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2029: [31, 31, 32, 31, 32, 30, 30, 29, 30, 29, 30, 30],
+            2030: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2031: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2032: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2033: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2034: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2035: [30, 32, 31, 32, 31, 31, 29, 30, 30, 29, 29, 31],
+            2036: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2037: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2038: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2039: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+            2040: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2041: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2042: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2043: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+            2044: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2045: [31, 32, 31, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2046: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2047: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+            2048: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2049: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+            2050: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2051: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+            2052: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2053: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+            2054: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2055: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2056: [31, 31, 32, 31, 32, 30, 30, 29, 30, 29, 30, 30],
+            2057: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2058: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2059: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2060: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2061: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2062: [30, 32, 31, 32, 31, 31, 29, 30, 29, 30, 29, 31],
+            2063: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2064: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2065: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2066: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 29, 31],
+            2067: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2068: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2069: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2070: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+            2071: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2072: [31, 32, 31, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2073: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2074: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+            2075: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2076: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+            2077: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2078: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+            2079: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2080: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+            2081: [31, 31, 32, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2082: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2083: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2084: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2085: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+            2086: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2087: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2088: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2089: [30, 32, 31, 32, 31, 31, 29, 30, 30, 29, 29, 31],
+            2090: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2091: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2092: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2093: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+            2094: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2095: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+            2096: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+            2097: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+            2098: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+            2099: [31, 32, 31, 32, 31, 30, 30, 29, 30, 29, 30, 30]
+        };
+
+        const BS_MONTHS_EN = [
+            'Baishakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin',
+            'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
+        ];
+        const BS_MONTHS_NE = [
+            'बैशाख', 'जेठ', 'असार', 'श्रावण', 'भदौ', 'असोज',
+            'कार्तिक', 'मंसिर', 'पुष', 'माघ', 'फाल्गुन', 'चैत'
+        ];
+        const BS_WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const BS_WEEKDAYS_NE = ['आइत', 'सोम', 'मंगल', 'बुध', 'बिही', 'शुक्र', 'शनि'];
+        const NEPALI_DIGITS = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+
+        /**
+         * Convert Arabic digits (0-9) to Devanagari Nepali digits (०-९) when language is 'ne'
+         */
+        function toLocaleDigits(val) {
+            const str = String(val ?? '');
+            if (currentLang !== 'ne') return str;
+            return str.replace(/\d/g, d => NEPALI_DIGITS[Number(d)]);
+        }
+
+        /**
+         * Parse BS string "YYYY-MM-DD" into { year, month, day }
+         */
+        function parseBsString(bsStr) {
+            if (!bsStr || typeof bsStr !== 'string') return null;
+            const parts = bsStr.trim().split('-').map(Number);
+            if (parts.length !== 3 || parts.some(isNaN)) return null;
+            const [year, month, day] = parts;
+            if (!BS_CALENDAR_MAP[year] || month < 1 || month > 12) return null;
+            const maxDay = BS_CALENDAR_MAP[year][month - 1];
+            if (day < 1 || day > maxDay) return null;
+            return { year, month, day };
+        }
+
+        /**
+         * Format { year, month, day } into canonical ISO-like BS string "YYYY-MM-DD"
+         */
+        function formatBsIso(year, month, day) {
+            return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+
+        /**
+         * Convert a BS date { year, month, day } (or "YYYY-MM-DD") to an exact JS Date (UTC midnight)
+         */
+        function bsToAdDate(bsInput) {
+            const parsed = typeof bsInput === 'string' ? parseBsString(bsInput) : bsInput;
+            if (!parsed) return null;
+            let totalDays = 0;
+            for (let y = BS_MIN_YEAR; y < parsed.year; y++) {
+                const months = BS_CALENDAR_MAP[y];
+                if (!months) break;
+                for (let m = 0; m < 12; m++) totalDays += months[m];
+            }
+            const curMonths = BS_CALENDAR_MAP[parsed.year];
+            for (let m = 0; m < parsed.month - 1; m++) {
+                totalDays += curMonths[m];
+            }
+            totalDays += (parsed.day - 1);
+
+            const anchorUtc = Date.UTC(BS_ANCHOR_AD.year, BS_ANCHOR_AD.month - 1, BS_ANCHOR_AD.day);
+            return new Date(anchorUtc + totalDays * 86400000);
+        }
+
+        /**
+         * Convert a JS Date (AD) to BS { year, month, day } using the BS calendar map up to 2099 BS
+         */
+        function adToBsDate(adDate = new Date()) {
+            const targetUtc = Date.UTC(adDate.getFullYear(), adDate.getMonth(), adDate.getDate());
+            const anchorUtc = Date.UTC(BS_ANCHOR_AD.year, BS_ANCHOR_AD.month - 1, BS_ANCHOR_AD.day);
+            let remainingDays = Math.floor((targetUtc - anchorUtc) / 86400000);
+
+            if (remainingDays < 0) {
+                return { year: BS_MIN_YEAR, month: 1, day: 1 };
+            }
+
+            for (let y = BS_MIN_YEAR; y <= BS_MAX_YEAR; y++) {
+                const months = BS_CALENDAR_MAP[y];
+                for (let m = 0; m < 12; m++) {
+                    const daysInMonth = months[m];
+                    if (remainingDays < daysInMonth) {
+                        return { year: y, month: m + 1, day: remainingDays + 1 };
+                    }
+                    remainingDays -= daysInMonth;
+                }
+            }
+            return { year: BS_MAX_YEAR, month: 12, day: BS_CALENDAR_MAP[BS_MAX_YEAR][11] };
+        }
+
+        /**
+         * Get today's BS date string "YYYY-MM-DD" or offset by N days
+         */
+        function getBsDateOffset(daysOffset = 0) {
+            const d = new Date();
+            d.setDate(d.getDate() + daysOffset);
+            const bs = adToBsDate(d);
+            return formatBsIso(bs.year, bs.month, bs.day);
+        }
+
+        /**
+         * Exact calendar day difference between two BS dates (endBs - startBs)
+         */
+        function diffBsDays(startBsStr, endBsStr) {
+            const startAd = bsToAdDate(startBsStr);
+            const endAd = bsToAdDate(endBsStr);
+            if (!startAd || !endAd) return 0;
+            return Math.floor((endAd.getTime() - startAd.getTime()) / 86400000);
+        }
+
+        /**
+         * Format BS date string ("YYYY-MM-DD") for display in EN or Nepali
+         * e.g. EN: "Mangsir 1, 2083 BS" | NE: "२०८३ मंसिर १"
+         */
+        function formatBsDisplay(bsStr, forceLang = null) {
+            const lang = forceLang || currentLang;
+            if (!bsStr) {
+                return lang === 'ne' ? 'मिति तोकिएको छैन' : 'Not set';
+            }
+            const parsed = parseBsString(bsStr);
+            if (!parsed) return bsStr;
+
+            if (lang === 'ne') {
+                const yNe = String(parsed.year).replace(/\d/g, d => NEPALI_DIGITS[Number(d)]);
+                const dNe = String(parsed.day).replace(/\d/g, d => NEPALI_DIGITS[Number(d)]);
+                return `${yNe} ${BS_MONTHS_NE[parsed.month - 1]} ${dNe}`;
+            }
+            return `${BS_MONTHS_EN[parsed.month - 1]} ${parsed.day}, ${parsed.year} BS`;
+        }
+
+        /**
+         * Update a hidden BS input and its button display text
+         */
+        function setBsInputValue(inputId, bsStr) {
+            const hiddenEl = document.getElementById(inputId);
+            const textEl = document.getElementById(inputId + '-text');
+            if (hiddenEl) hiddenEl.value = bsStr || '';
+            if (textEl) {
+                if (!bsStr) {
+                    textEl.textContent = currentLang === 'ne' ? 'मिति छान्नुहोस्' : 'Select BS Date';
+                    textEl.classList.add('text-slate-400');
+                    textEl.classList.remove('text-slate-800');
+                } else {
+                    textEl.textContent = formatBsDisplay(bsStr);
+                    textEl.classList.remove('text-slate-400');
+                    textEl.classList.add('text-slate-800');
+                }
+            }
+        }
+
+        // =========================================================================
+        // INTERACTIVE NEPALI BS DATE PICKER (2000 BS - 2099 BS)
+        // =========================================================================
+        let bsPickerTargetInputId = null;
+        let bsPickerAllowClear = false;
+        let bsPickerViewYear = 2083;
+        let bsPickerViewMonth = 8;
+
+        function openBsPicker(targetInputId, triggerBtn, allowClear = false) {
+            bsPickerTargetInputId = targetInputId;
+            bsPickerAllowClear = allowClear;
+
+            const hiddenEl = document.getElementById(targetInputId);
+            const currentVal = hiddenEl ? parseBsString(hiddenEl.value) : null;
+            const todayBs = adToBsDate(new Date());
+
+            bsPickerViewYear = currentVal ? currentVal.year : todayBs.year;
+            bsPickerViewMonth = currentVal ? currentVal.month : todayBs.month;
+
+            const clearBtn = document.getElementById('bs-picker-clear-btn');
+            if (clearBtn) {
+                clearBtn.classList.toggle('hidden', !allowClear);
+            }
+
+            renderBsPicker();
+
+            const modal = document.getElementById('bs-picker-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeBsPicker() {
+            const modal = document.getElementById('bs-picker-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            bsPickerTargetInputId = null;
+        }
+
+        function shiftBsPickerMonth(delta) {
+            let m = bsPickerViewMonth + delta;
+            let y = bsPickerViewYear;
+            if (m < 1) {
+                m = 12;
+                y--;
+            } else if (m > 12) {
+                m = 1;
+                y++;
+            }
+            if (y < BS_MIN_YEAR || y > BS_MAX_YEAR) return;
+            bsPickerViewYear = y;
+            bsPickerViewMonth = m;
+            renderBsPicker();
+        }
+
+        function onBsPickerDropdownChange() {
+            const ySel = document.getElementById('bs-picker-year');
+            const mSel = document.getElementById('bs-picker-month');
+            bsPickerViewYear = Number(ySel.value);
+            bsPickerViewMonth = Number(mSel.value);
+            renderBsPicker();
+        }
+
+        function selectBsPickerDay(day) {
+            if (!bsPickerTargetInputId) return;
+            const iso = formatBsIso(bsPickerViewYear, bsPickerViewMonth, day);
+            setBsInputValue(bsPickerTargetInputId, iso);
+            closeBsPicker();
+        }
+
+        function selectBsPickerToday() {
+            if (!bsPickerTargetInputId) return;
+            const todayIso = getBsDateOffset(0);
+            setBsInputValue(bsPickerTargetInputId, todayIso);
+            closeBsPicker();
+        }
+
+        function clearBsPickerDate() {
+            if (!bsPickerTargetInputId) return;
+            setBsInputValue(bsPickerTargetInputId, '');
+            closeBsPicker();
+        }
+
+        function renderBsPicker() {
+            const monthSel = document.getElementById('bs-picker-month');
+            const yearSel = document.getElementById('bs-picker-year');
+            const weekdaysEl = document.getElementById('bs-picker-weekdays');
+            const daysEl = document.getElementById('bs-picker-days');
+
+            // Populate month options
+            const monthNames = currentLang === 'ne' ? BS_MONTHS_NE : BS_MONTHS_EN;
+            monthSel.innerHTML = monthNames.map((name, idx) =>
+                `<option value="${idx + 1}" ${idx + 1 === bsPickerViewMonth ? 'selected' : ''}>${name}</option>`
+            ).join('');
+
+            // Populate year options (2000 - 2099 BS)
+            let yearOpts = '';
+            for (let y = BS_MIN_YEAR; y <= BS_MAX_YEAR; y++) {
+                const label = toLocaleDigits(y);
+                yearOpts += `<option value="${y}" ${y === bsPickerViewYear ? 'selected' : ''}>${label}</option>`;
+            }
+            yearSel.innerHTML = yearOpts;
+
+            // Render weekday headers
+            const wNames = currentLang === 'ne' ? BS_WEEKDAYS_NE : BS_WEEKDAYS_EN;
+            weekdaysEl.innerHTML = wNames.map((w, i) =>
+                `<div class="${i === 6 ? 'text-rose-500' : ''}">${w}</div>`
+            ).join('');
+
+            // Compute start day-of-week (0=Sun..6=Sat) for 1st of selected BS month
+            const firstDayAd = bsToAdDate({ year: bsPickerViewYear, month: bsPickerViewMonth, day: 1 });
+            const startWeekday = firstDayAd ? firstDayAd.getUTCDay() : 0;
+            const daysInMonth = BS_CALENDAR_MAP[bsPickerViewYear][bsPickerViewMonth - 1];
+
+            const hiddenEl = bsPickerTargetInputId ? document.getElementById(bsPickerTargetInputId) : null;
+            const selectedParsed = hiddenEl ? parseBsString(hiddenEl.value) : null;
+            const todayBs = adToBsDate(new Date());
+
+            let gridHtml = '';
+            for (let blank = 0; blank < startWeekday; blank++) {
+                gridHtml += `<div></div>`;
+            }
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const isSelected = selectedParsed &&
+                    selectedParsed.year === bsPickerViewYear &&
+                    selectedParsed.month === bsPickerViewMonth &&
+                    selectedParsed.day === d;
+                const isToday = todayBs.year === bsPickerViewYear &&
+                    todayBs.month === bsPickerViewMonth &&
+                    todayBs.day === d;
+                const isSaturday = ((startWeekday + d - 1) % 7) === 6;
+
+                let btnCls = 'w-9 h-9 mx-auto rounded-xl text-xs font-semibold flex items-center justify-center transition ';
+                if (isSelected) {
+                    btnCls += 'bg-indigo-600 text-white font-extrabold shadow-sm';
+                } else if (isToday) {
+                    btnCls += 'bg-indigo-50 text-indigo-700 border border-indigo-300 font-bold';
+                } else if (isSaturday) {
+                    btnCls += 'text-rose-600 hover:bg-rose-50';
+                } else {
+                    btnCls += 'text-slate-700 hover:bg-slate-100';
+                }
+
+                gridHtml += `<button type="button" onclick="selectBsPickerDay(${d})" class="${btnCls}">${toLocaleDigits(d)}</button>`;
+            }
+
+            daysEl.innerHTML = gridHtml;
+            document.getElementById('bs-picker-today-btn').textContent = currentLang === 'ne' ? 'आज (वि.सं.)' : 'Today (BS)';
+            document.getElementById('bs-picker-clear-btn').textContent = currentLang === 'ne' ? 'हटाउनुहोस्' : 'Clear';
+            document.getElementById('bs-picker-close-btn').textContent = currentLang === 'ne' ? 'बन्द' : 'Close';
+        }
+
+        // =========================================================================
+        // BILINGUAL DICTIONARY (ENGLISH & NEPALI)
+        // =========================================================================
+        const I18N = {
+            en: {
+                brandTitleHtml: 'Mero<span class="text-indigo-600">Loan</span>',
+                currencyBadge: 'BS • NPR',
+                subtitle: 'Smart Debit, Credit & Interest To-Do Ledger (BS Calendar)',
+                exportAllDesktop: 'Download All Ledgers (.xlsx)',
+                exportAllMobile: 'Excel',
+                resetDemo: 'Reset Demo',
+                addLoan: 'Add Loan',
+                kpiCreditBadge: 'Credit (To Receive)',
+                kpiCreditSub: 'Remaining from lent loans',
+                kpiDebitBadge: 'Debit (To Pay)',
+                kpiDebitSub: 'Remaining to pay back',
+                kpiInterestBadge: 'Accrued Interest',
+                kpiInterestSub: 'Calculated across active loans',
+                kpiNetBadge: 'Net Position',
+                kpiNetSub: 'Receivable minus Payable',
+                formHeading: 'New Loan Entry',
+                formSub: 'Add a debit or credit in Bikram Sambat (BS)',
+                addModalTitle: 'Add New Loan Entry (BS)',
+                txTypeLabel: 'Transaction Type',
+                creditOpt: 'Credit (Given / Lent)',
+                debitOpt: 'Debit (Taken / Owe)',
+                personLabel: 'Loan Giver / Person Name *',
+                personPlaceholder: 'e.g., Aarav Sharma',
+                principalLabel: 'Principal (Rs.) *',
+                rateLabel: 'Interest (% / yr) *',
+                givenDateLabel: 'Loan Given Date (BS) *',
+                receivedDateLabel: 'Loan Received Date (BS) *',
+                dueDateLabel: 'Due Date (BS)',
+                initialReceivedLabel: 'Initial Received Amount (Rs.)',
+                initialPaidLabel: 'Initial Paid Amount (Rs.)',
+                noteLabel: 'Installment / Purpose Note',
+                notePlaceholder: 'e.g., Monthly EMI on 15th / Dashain settlement',
+                addTodoBtn: 'Add to Loan To-Do List',
+                saveLoanBtn: 'Save Loan',
+                cancelBtn: 'Cancel',
+                todoSectionTitle: 'Loan Repayment To-Do List',
+                todoSectionSubHtml: 'Check off settled loans or click <strong class="text-slate-700">More</strong> for full interest breakdown & BS payment logs.',
+                searchPlaceholder: 'Search person name...',
+                tabAll: 'All',
+                tabDebit: 'Debit — To Pay',
+                tabCredit: 'Credit — To Receive',
+                tabOverdue: 'Overdue',
+                tabSettled: 'Completed / Settled',
+                emptyTitle: 'No loan entries found',
+                emptySub: 'Try switching your filter tab, clearing the search query, or adding a new loan record.',
+                creditBadgeCard: 'Credit • To Receive',
+                debitBadgeCard: 'Debit • To Pay',
+                overdueBadge: 'Overdue',
+                settledBadge: 'Settled',
+                excelBtnCard: 'Excel',
+                moreBtnCard: 'More',
+                givenPrefix: 'Given',
+                receivedPrefix: 'Received',
+                duePrefix: 'Due',
+                principalShort: 'Principal',
+                interestShort: 'Interest',
+                receivedSoFar: 'Received So Far',
+                paidSoFar: 'Paid So Far',
+                remainingShort: 'Remaining',
+                receivedPctSuffix: 'received',
+                paidPctSuffix: 'paid',
+                detailSectionHeading: 'Complete Loan & Interest Breakdown (BS)',
+                detailDueLabel: 'Due / Settlement Date (BS)',
+                detailDaysLabel: 'Duration Elapsed',
+                detailPrincipalLabel: 'Principal Amount',
+                detailAccruedPrefix: 'Accrued Interest',
+                detailTotalReceivable: 'Total Receivable',
+                detailTotalPayable: 'Total Payable',
+                detailRemainingLabel: 'Remaining Balance',
+                detailProgressLabel: 'Progress',
+                recordPaymentHeading: 'Record a Payment / Receipt',
+                paymentAmountLabel: 'Amount (Rs.) *',
+                dateReceivedLabel: 'Date Received (BS) *',
+                datePaidLabel: 'Date Paid (BS) *',
+                paymentNoteLabel: 'Method / Note',
+                paymentNotePlaceholder: 'eSewa, Cash, Bank',
+                recordReceiptBtn: 'Record Receipt',
+                recordPaymentBtn: 'Record Payment',
+                historyLogHeading: 'Payment / Receipt History (BS)',
+                noPaymentsEmpty: 'No entries recorded yet. Use the form above to log an entry with its BS date.',
+                deleteRecordBtn: 'Delete Record',
+                confirmDeleteBtn: 'Click again to confirm delete',
+                downloadExcelBtn: 'Download Excel Ledger (.xlsx)',
+                markSettledBtn: 'Mark as Settled',
+                reopenLoanBtn: 'Reopen Loan',
+                closeBtn: 'Close',
+                noNotesSub: 'No installment notes provided',
+                statusSettled: 'Settled',
+                statusOverdue: 'Overdue',
+                statusPartial: 'Partial',
+                statusPending: 'Pending',
+                footerLeftHtml: '<strong class="text-slate-700">MeroLoan</strong> — Personal Loan & Ledger Tracker (Bikram Sambat 2000–2099 BS)',
+                footerRight: "All records are saved securely in your browser's local storage.",
+                currencyPrefix: 'Rs.',
+                daySingular: 'Day',
+                dayPlural: 'Days',
+                entrySingular: 'entry',
+                entryPlural: 'entries'
+            },
+            ne: {
+                brandTitleHtml: 'मेरो<span class="text-indigo-600">लोन</span>',
+                currencyBadge: 'वि.सं. • रु.',
+                subtitle: 'डेबिट, क्रेडिट र ब्याज व्यवस्थापन खाता (विक्रम संवत्)',
+                exportAllDesktop: 'सबै खाता डाउनलोड (.xlsx)',
+                exportAllMobile: 'एक्सेल',
+                resetDemo: 'डेमो रिसेट',
+                addLoan: 'नयाँ ऋण थप्नुहोस्',
+                kpiCreditBadge: 'क्रेडिट (लिनुपर्ने)',
+                kpiCreditSub: 'दिइएको ऋणबाट बाँकी रकम',
+                kpiDebitBadge: 'डेबिट (तिर्नुपर्ने)',
+                kpiDebitSub: 'तिर्न बाँकी रहेको ऋण रकम',
+                kpiInterestBadge: 'जम्मा ब्याज',
+                kpiInterestSub: 'सक्रिय ऋणहरूको कुल ब्याज',
+                kpiNetBadge: 'खुद स्थिति (Net)',
+                kpiNetSub: 'लिनुपर्ने बाट तिर्नुपर्ने घटाउँदा',
+                formHeading: 'नयाँ ऋण विवरण',
+                formSub: 'विक्रम संवत् (वि.सं.) मितिमा डेबिट वा क्रेडिट थप्नुहोस्',
+                addModalTitle: 'नयाँ ऋण विवरण थप्नुहोस् (वि.सं.)',
+                txTypeLabel: 'कारोबारको प्रकार',
+                creditOpt: 'क्रेडिट (दिएको / लिनुपर्ने)',
+                debitOpt: 'डेबिट (लिएको / तिर्नुपर्ने)',
+                personLabel: 'ऋणदाता / व्यक्तिको नाम *',
+                personPlaceholder: 'उदाहरण: आरव शर्मा',
+                principalLabel: 'साँवा रकम (रु.) *',
+                rateLabel: 'ब्याज दर (% वार्षिक) *',
+                givenDateLabel: 'ऋण दिएको मिति (वि.सं.) *',
+                receivedDateLabel: 'ऋण लिएको मिति (वि.सं.) *',
+                dueDateLabel: 'भाखा / तिर्ने मिति (वि.सं.)',
+                initialReceivedLabel: 'सुरुमा प्राप्त रकम (रु.)',
+                initialPaidLabel: 'सुरुमा तिरेको रकम (रु.)',
+                noteLabel: 'किस्ता / प्रयोजन विवरण',
+                notePlaceholder: 'उदाहरण: मासिक किस्ता वा दसैंमा फर्स्यौट',
+                addTodoBtn: 'ऋण सूचीमा थप्नुहोस्',
+                saveLoanBtn: 'ऋण सुरक्षित गर्नुहोस्',
+                cancelBtn: 'रद्द गर्नुहोस्',
+                todoSectionTitle: 'ऋण भुक्तानी कार्यसूची (To-Do)',
+                todoSectionSubHtml: 'फर्स्यौट भएको ऋणमा चिन्ह लगाउनुहोस् वा विस्तृत ब्याज र वि.सं. भुक्तानी विवरणका लागि <strong class="text-slate-700">विस्तृत</strong> थिच्नुहोस्।',
+                searchPlaceholder: 'व्यक्तिको नाम खोज्नुहोस्...',
+                tabAll: 'सबै',
+                tabDebit: 'डेबिट — तिर्नुपर्ने',
+                tabCredit: 'क्रेडिट — लिनुपर्ने',
+                tabOverdue: 'भाखा नाघेको',
+                tabSettled: 'फर्स्यौट भएको',
+                emptyTitle: 'कुनै ऋण विवरण भेटिएन',
+                emptySub: 'फिल्टर ट्याब परिवर्तन गर्नुहोस्, खोज खाली गर्नुहोस्, वा नयाँ ऋण थप्नुहोस्।',
+                creditBadgeCard: 'क्रेडिट • लिनुपर्ने',
+                debitBadgeCard: 'डेबिट • तिर्नुपर्ने',
+                overdueBadge: 'भाखा नाघेको',
+                settledBadge: 'फर्स्यौट',
+                excelBtnCard: 'एक्सेल',
+                moreBtnCard: 'विस्तृत',
+                givenPrefix: 'दिएको मिति',
+                receivedPrefix: 'लिएको मिति',
+                duePrefix: 'भाखा मिति',
+                principalShort: 'साँवा',
+                interestShort: 'ब्याज',
+                receivedSoFar: 'हालसम्म प्राप्त',
+                paidSoFar: 'हालसम्म तिरेको',
+                remainingShort: 'बाँकी रकम',
+                receivedPctSuffix: 'प्राप्त',
+                paidPctSuffix: 'भुक्तानी',
+                detailSectionHeading: 'पूर्ण ऋण तथा ब्याज विवरण (वि.सं.)',
+                detailDueLabel: 'भाखा / फर्स्यौट मिति (वि.सं.)',
+                detailDaysLabel: 'बितेको दिन',
+                detailPrincipalLabel: 'साँवा रकम',
+                detailAccruedPrefix: 'उठेको ब्याज',
+                detailTotalReceivable: 'कुल लिनुपर्ने रकम',
+                detailTotalPayable: 'कुल तिर्नुपर्ने रकम',
+                detailRemainingLabel: 'बाँकी रकम',
+                detailProgressLabel: 'प्रगति',
+                recordPaymentHeading: 'भुक्तानी / प्राप्ति दर्ता गर्नुहोस्',
+                paymentAmountLabel: 'रकम (रु.) *',
+                dateReceivedLabel: 'प्राप्त मिति (वि.सं.) *',
+                datePaidLabel: 'भुक्तानी मिति (वि.सं.) *',
+                paymentNoteLabel: 'माध्यम / कैफियत',
+                paymentNotePlaceholder: 'ईसेवा, नगद, बैंक',
+                recordReceiptBtn: 'प्राप्ति दर्ता गर्नुहोस्',
+                recordPaymentBtn: 'भुक्तानी दर्ता गर्नुहोस्',
+                historyLogHeading: 'भुक्तानी / प्राप्ति इतिहास (वि.सं.)',
+                noPaymentsEmpty: 'अहिलेसम्म कुनै भुक्तानी दर्ता भएको छैन। माथिको फारमबाट वि.सं. मितिसहित दर्ता गर्नुहोस्।',
+                deleteRecordBtn: 'विवरण मेटाउनुहोस्',
+                confirmDeleteBtn: 'मेटाउन निश्चित गर्न फेरि थिच्नुहोस्',
+                downloadExcelBtn: 'एक्सेल खाता डाउनलोड (.xlsx)',
+                markSettledBtn: 'फर्स्यौट भएको चिन्ह लगाउनुहोस्',
+                reopenLoanBtn: 'ऋण पुनः खोल्नुहोस्',
+                closeBtn: 'बन्द गर्नुहोस्',
+                noNotesSub: 'कुनै कैफियत उल्लेख गरिएको छैन',
+                statusSettled: 'फर्स्यौट',
+                statusOverdue: 'भाखा नाघेको',
+                statusPartial: 'आंशिक',
+                statusPending: 'बाँकी',
+                footerLeftHtml: '<strong class="text-slate-700">मेरोलोन (MeroLoan)</strong> — व्यक्तिगत ऋण तथा खाता व्यवस्थापन (विक्रम संवत् २०००–२०९९)',
+                footerRight: 'सबै विवरणहरू तपाईंको ब्राउजरमा सुरक्षित रूपमा भण्डारण गरिएका छन्।',
+                currencyPrefix: 'रु.',
+                daySingular: 'दिन',
+                dayPlural: 'दिन',
+                entrySingular: 'प्रविष्टि',
+                entryPlural: 'प्रविष्टिहरू'
+            }
+        };
+
+        function t(key) {
+            return (I18N[currentLang] && I18N[currentLang][key]) || I18N.en[key] || key;
+        }
+
+        /**
+         * Switch active UI language ('en' or 'ne'), persist in localStorage, and refresh all views
+         */
+        function setLanguage(lang) {
+            currentLang = lang === 'ne' ? 'ne' : 'en';
+            try {
+                localStorage.setItem(LANG_STORAGE_KEY, currentLang);
+            } catch (e) {}
+
+            // Update switcher button styles
+            const btnEn = document.getElementById('lang-btn-en');
+            const btnNe = document.getElementById('lang-btn-ne');
+            if (currentLang === 'en') {
+                btnEn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-indigo-600 text-white shadow-sm';
+                btnNe.className = 'px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900';
+            } else {
+                btnNe.className = 'px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-indigo-600 text-white shadow-sm';
+                btnEn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900';
+            }
+
+            applyStaticTranslations();
+            updateFormLabels('desktop');
+            updateFormLabels('modal');
+
+            // Refresh BS date button displays
+            ['d-start', 'd-due', 'm-start', 'm-due', 'payment-date-input'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) setBsInputValue(id, el.value);
+            });
+
+            refreshApp();
+        }
+
+        function applyStaticTranslations() {
+            document.getElementById('hdr-brand-title').innerHTML = t('brandTitleHtml');
+            document.getElementById('hdr-currency-badge').textContent = t('currencyBadge');
+            document.getElementById('hdr-subtitle').textContent = t('subtitle');
+            document.getElementById('hdr-today-bs-text').textContent = formatBsDisplay(getBsDateOffset(0));
+
+            document.getElementById('btn-export-all-desktop').textContent = t('exportAllDesktop');
+            document.getElementById('btn-export-all-mobile').textContent = t('exportAllMobile');
+            document.getElementById('btn-reset-demo-text').textContent = t('resetDemo');
+            document.getElementById('btn-add-loan-hdr-text').textContent = t('addLoan');
+
+            document.getElementById('kpi-credit-badge').textContent = t('kpiCreditBadge');
+            document.getElementById('stat-receivable-sub').textContent = t('kpiCreditSub');
+            document.getElementById('kpi-debit-badge').textContent = t('kpiDebitBadge');
+            document.getElementById('stat-payable-sub').textContent = t('kpiDebitSub');
+            document.getElementById('kpi-interest-badge').textContent = t('kpiInterestBadge');
+            document.getElementById('stat-interest-sub').textContent = t('kpiInterestSub');
+            document.getElementById('kpi-net-badge').textContent = t('kpiNetBadge');
+            document.getElementById('stat-net-sub').textContent = t('kpiNetSub');
+
+            // Desktop form labels
+            document.getElementById('form-d-heading').textContent = t('formHeading');
+            document.getElementById('form-d-sub').textContent = t('formSub');
+            document.getElementById('form-d-type-label').textContent = t('txTypeLabel');
+            document.getElementById('form-d-credit-opt').textContent = t('creditOpt');
+            document.getElementById('form-d-debit-opt').textContent = t('debitOpt');
+            document.getElementById('form-d-person-label').textContent = t('personLabel');
+            document.getElementById('d-person').placeholder = t('personPlaceholder');
+            document.getElementById('form-d-principal-label').textContent = t('principalLabel');
+            document.getElementById('form-d-rate-label').textContent = t('rateLabel');
+            document.getElementById('form-d-due-label').textContent = t('dueDateLabel');
+            document.getElementById('form-d-note-label').textContent = t('noteLabel');
+            document.getElementById('d-note').placeholder = t('notePlaceholder');
+            document.getElementById('form-d-submit-text').textContent = t('addTodoBtn');
+
+            // Mobile modal form labels
+            document.getElementById('add-modal-title').textContent = t('addModalTitle');
+            document.getElementById('form-m-type-label').textContent = t('txTypeLabel');
+            document.getElementById('form-m-credit-opt').textContent = t('creditOpt');
+            document.getElementById('form-m-debit-opt').textContent = t('debitOpt');
+            document.getElementById('form-m-person-label').textContent = t('personLabel');
+            document.getElementById('m-person').placeholder = t('personPlaceholder');
+            document.getElementById('form-m-principal-label').textContent = t('principalLabel');
+            document.getElementById('form-m-rate-label').textContent = t('rateLabel');
+            document.getElementById('form-m-due-label').textContent = t('dueDateLabel');
+            document.getElementById('form-m-note-label').textContent = t('noteLabel');
+            document.getElementById('m-note').placeholder = t('notePlaceholder');
+            document.getElementById('form-m-cancel-btn').textContent = t('cancelBtn');
+            document.getElementById('form-m-submit-btn').textContent = t('saveLoanBtn');
+
+            // To-do header & tabs
+            document.getElementById('todo-section-title').textContent = t('todoSectionTitle');
+            document.getElementById('todo-section-sub').innerHTML = t('todoSectionSubHtml');
+            document.getElementById('search-input').placeholder = t('searchPlaceholder');
+            document.getElementById('tab-label-all').textContent = t('tabAll');
+            document.getElementById('tab-label-debit').textContent = t('tabDebit');
+            document.getElementById('tab-label-credit').textContent = t('tabCredit');
+            document.getElementById('tab-label-overdue').textContent = t('tabOverdue');
+            document.getElementById('tab-label-settled').textContent = t('tabSettled');
+
+            // More modal static texts
+            document.getElementById('detail-section-heading').textContent = t('detailSectionHeading');
+            document.getElementById('detail-due-label').textContent = t('detailDueLabel');
+            document.getElementById('detail-days-label').textContent = t('detailDaysLabel');
+            document.getElementById('detail-principal-label').textContent = t('detailPrincipalLabel');
+            document.getElementById('detail-remaining-label').textContent = t('detailRemainingLabel');
+            document.getElementById('detail-progress-label').textContent = t('detailProgressLabel');
+            document.getElementById('record-payment-heading-text').textContent = t('recordPaymentHeading');
+            document.getElementById('payment-amount-label').textContent = t('paymentAmountLabel');
+            document.getElementById('payment-note-label').textContent = t('paymentNoteLabel');
+            document.getElementById('payment-note-input').placeholder = t('paymentNotePlaceholder');
+            document.getElementById('history-log-heading').textContent = t('historyLogHeading');
+            document.getElementById('modal-excel-btn-text').textContent = t('downloadExcelBtn');
+            document.getElementById('modal-close-btn').textContent = t('closeBtn');
+
+            // Footer
+            document.getElementById('footer-left').innerHTML = t('footerLeftHtml');
+            document.getElementById('footer-right').textContent = t('footerRight');
+        }
+
+        /**
+         * Dynamically update form labels when switching between Credit (Given) and Debit (Taken)
+         */
+        function updateFormLabels(prefix) {
+            const formId = prefix === 'desktop' ? 'desktop-loan-form' : 'modal-loan-form';
+            const form = document.getElementById(formId);
+            if (!form) return;
+
+            const selectedType = form.querySelector('input[name="type"]:checked')?.value || 'credit';
+            const startLabel = document.getElementById(prefix === 'desktop' ? 'd-start-label' : 'm-start-label');
+            const paidLabel = document.getElementById(prefix === 'desktop' ? 'd-paid-label' : 'm-paid-label');
+
+            if (selectedType === 'credit') {
+                if (startLabel) startLabel.textContent = t('givenDateLabel');
+                if (paidLabel) paidLabel.textContent = t('initialReceivedLabel');
+            } else {
+                if (startLabel) startLabel.textContent = t('receivedDateLabel');
+                if (paidLabel) paidLabel.textContent = t('initialPaidLabel');
+            }
+        }
+
+        /**
+         * Pre-populated realistic Nepali sample data using Bikram Sambat (BS) dates (around 2083 BS)
+         */
+        function getInitialSampleLoans() {
+            return [
+                {
+                    id: 'loan-101',
+                    personName: 'Aarav Sharma (आरव शर्मा)',
+                    type: 'credit', // Money Given / Lent (Receivable)
+                    principal: 150000,
+                    interestRate: 12,
+                    startDate: getBsDateOffset(-140),
+                    dueDate: getBsDateOffset(40),
+                    note: 'Shop expansion support — Monthly installment plan',
+                    paidAmount: 45000,
+                    settled: false,
+                    payments: [
+                        { id: 'p-2', date: getBsDateOffset(-30), amount: 20000, note: '2nd installment received (Cash)' },
+                        { id: 'p-1', date: getBsDateOffset(-90), amount: 25000, note: '1st installment via ConnectIPS' }
+                    ]
+                }
+             
+            ];
+        }
+
+        /**
+         * Load data from localStorage or initialize sample data
+         */
+        function loadLoans() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        loans = parsed;
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to read localStorage:', e);
+            }
+            loans = getInitialSampleLoans();
+            saveLoans();
+        }
+
+        /**
+         * Save loans array to localStorage
+         */
+        function saveLoans() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(loans));
+            } catch (e) {
+                console.error('Failed to save to localStorage:', e);
+            }
+        }
+
+        /**
+         * Format number into Nepali Rupee currency string (Rs. 1,50,000 or रु. १,५०,०००)
+         */
+        function formatNPR(amount, forceLang = null) {
+            const lang = forceLang || currentLang;
+            const num = Math.round((Number(amount) || 0) * 100) / 100;
+            const isNeg = num < 0;
+            const absVal = Math.abs(num);
+            let formatted = absVal.toLocaleString('en-IN', {
+                minimumFractionDigits: absVal % 1 === 0 ? 0 : 2,
+                maximumFractionDigits: 2
+            });
+            if (lang === 'ne') {
+                formatted = formatted.replace(/\d/g, d => NEPALI_DIGITS[Number(d)]);
+                return `${isNeg ? '-' : ''}रु. ${formatted}`;
+            }
+            return `${isNeg ? '-' : ''}Rs. ${formatted}`;
+        }
+
+        /**
+         * Calculate simple accrued interest, days elapsed, overdue status, total due, and remaining balance using BS dates
+         */
+        function calculateLoanMetrics(loan) {
+            const principal = Number(loan.principal) || 0;
+            const rate = Number(loan.interestRate) || 0;
+            const paid = Number(loan.paidAmount) || 0;
+
+            const todayBs = getBsDateOffset(0);
+            const rawDays = diffBsDays(loan.startDate, todayBs);
+            const daysElapsed = Math.max(1, rawDays);
+
+            // Simple annual interest: P * R * (days / 365) / 100
+            const interestAmount = Math.round((principal * rate * (daysElapsed / 365)) / 100);
+            const totalDue = principal + interestAmount;
+            const remaining = loan.settled ? 0 : Math.max(0, totalDue - paid);
+            const progressPct = totalDue > 0 ? Math.min(100, Math.round(((loan.settled ? totalDue : paid) / totalDue) * 100)) : 100;
+
+            let isOverdue = false;
+            if (!loan.settled && remaining > 0 && loan.dueDate) {
+                const daysPastDue = diffBsDays(loan.dueDate, todayBs);
+                if (daysPastDue > 0) {
+                    isOverdue = true;
+                }
+            }
+
+            let statusKey = 'statusPending';
+            if (loan.settled || remaining <= 0) {
+                statusKey = 'statusSettled';
+            } else if (isOverdue) {
+                statusKey = 'statusOverdue';
+            } else if (paid > 0) {
+                statusKey = 'statusPartial';
+            }
+
+            return {
+                principal,
+                rate,
+                daysElapsed,
+                interestAmount,
+                totalDue,
+                paid,
+                remaining,
+                progressPct,
+                isOverdue,
+                statusKey,
+                status: t(statusKey)
+            };
+        }
+
+        /**
+         * Render Dashboard Summary Overview Cards
+         */
+        function renderSummaryCards() {
+            let totalReceivable = 0;
+            let totalPayable = 0;
+            let totalInterest = 0;
+
+            loans.forEach(loan => {
+                const m = calculateLoanMetrics(loan);
+                if (!loan.settled && m.remaining > 0) {
+                    if (loan.type === 'credit') {
+                        totalReceivable += m.remaining;
+                    } else {
+                        totalPayable += m.remaining;
+                    }
+                    totalInterest += m.interestAmount;
+                }
+            });
+
+            const netBalance = totalReceivable - totalPayable;
+
+            document.getElementById('stat-receivable').textContent = formatNPR(totalReceivable);
+            document.getElementById('stat-payable').textContent = formatNPR(totalPayable);
+            document.getElementById('stat-interest').textContent = formatNPR(totalInterest);
+
+            const netEl = document.getElementById('stat-net');
+            netEl.textContent = (netBalance > 0 ? '+' : '') + formatNPR(netBalance);
+            netEl.className = `text-2xl font-extrabold tracking-tight ${
+                netBalance > 0 ? 'text-emerald-600' : netBalance < 0 ? 'text-rose-600' : 'text-slate-900'
+            }`;
+        }
+
+        /**
+         * Render Filter Counts and To-Do List Items
+         */
+        function renderTodoList() {
+            const listContainer = document.getElementById('loan-todo-list');
+
+            // Update filter tab counts
+            const allCount = loans.length;
+            const debitCount = loans.filter(l => l.type === 'debit' && !l.settled).length;
+            const creditCount = loans.filter(l => l.type === 'credit' && !l.settled).length;
+            const overdueCount = loans.filter(l => calculateLoanMetrics(l).isOverdue).length;
+            const settledCount = loans.filter(l => l.settled).length;
+
+            document.getElementById('count-all').textContent = toLocaleDigits(allCount);
+            document.getElementById('count-debit').textContent = toLocaleDigits(debitCount);
+            document.getElementById('count-credit').textContent = toLocaleDigits(creditCount);
+            document.getElementById('count-overdue').textContent = toLocaleDigits(overdueCount);
+            document.getElementById('count-settled').textContent = toLocaleDigits(settledCount);
+
+            // Filter & Search
+            const filtered = loans.filter(loan => {
+                const matchesSearch = loan.personName.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+                                      (loan.note && loan.note.toLowerCase().includes(searchQuery.toLowerCase().trim()));
+                if (!matchesSearch) return false;
+
+                if (activeFilter === 'debit') return loan.type === 'debit' && !loan.settled;
+                if (activeFilter === 'credit') return loan.type === 'credit' && !loan.settled;
+                if (activeFilter === 'overdue') return calculateLoanMetrics(loan).isOverdue;
+                if (activeFilter === 'settled') return loan.settled;
+                return true;
+            });
+
+            // Sort active items first, then settled items
+            filtered.sort((a, b) => Number(a.settled) - Number(b.settled));
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                            <i data-lucide="inbox" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-slate-800">${escapeHtml(t('emptyTitle'))}</h3>
+                        <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">${escapeHtml(t('emptySub'))}</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            listContainer.innerHTML = filtered.map(loan => {
+                const m = calculateLoanMetrics(loan);
+                const isCredit = loan.type === 'credit';
+                const badgeClass = isCredit
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 border-rose-200';
+                const badgeLabel = isCredit ? t('creditBadgeCard') : t('debitBadgeCard');
+                const datePrefix = isCredit ? t('givenPrefix') : t('receivedPrefix');
+                const paidLabel = isCredit ? t('receivedSoFar') : t('paidSoFar');
+                const progressSuffix = isCredit ? t('receivedPctSuffix') : t('paidPctSuffix');
+
+                const cardOpacity = loan.settled
+                    ? 'bg-slate-50/90 border-slate-200/70'
+                    : m.isOverdue
+                    ? 'bg-white border-rose-300 hover:border-rose-400'
+                    : 'bg-white border-slate-200/90 hover:border-indigo-300';
+                const titleStyle = loan.settled ? 'line-through text-slate-400' : 'text-slate-900';
+
+                return `
+                    <article class="rounded-2xl border ${cardOpacity} p-4 sm:p-5 shadow-sm transition-all">
+                        <div class="flex items-start gap-3.5">
+                            <!-- Interactive To-Do Checkbox -->
+                            <div class="pt-0.5">
+                                <button
+                                    type="button"
+                                    onclick="toggleLoanSettled('${loan.id}')"
+                                    title="${loan.settled ? t('reopenLoanBtn') : t('markSettledBtn')}"
+                                    aria-label="Toggle settled status for ${escapeHtml(loan.personName)}"
+                                    class="w-6 h-6 rounded-lg border-2 flex items-center justify-center transition ${
+                                        loan.settled
+                                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                                            : 'border-slate-300 hover:border-indigo-600 bg-white text-transparent'
+                                    }"
+                                >
+                                    <i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>
+                                </button>
+                            </div>
+
+                            <!-- Main Loan Info -->
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h3 class="text-base font-bold ${titleStyle}">${escapeHtml(loan.personName)}</h3>
+                                        <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${badgeClass}">
+                                            ${escapeHtml(badgeLabel)}
+                                        </span>
+                                        ${m.isOverdue ? `
+                                            <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-600 text-white shadow-sm">
+                                                <i data-lucide="alert-circle" class="w-3 h-3"></i>
+                                                ${escapeHtml(t('overdueBadge'))}
+                                            </span>
+                                        ` : ''}
+                                        ${loan.settled ? `
+                                            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                                                ${escapeHtml(t('settledBadge'))}
+                                            </span>
+                                        ` : ''}
+                                    </div>
+
+                                    <!-- Card Action Buttons: Per-Person Excel (.xlsx) & "More" -->
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <button
+                                            type="button"
+                                            onclick="downloadPersonExcel('${loan.id}')"
+                                            title="${escapeHtml(t('downloadExcelBtn'))}"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-xl transition"
+                                        >
+                                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                                            <span>${escapeHtml(t('excelBtnCard'))}</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onclick="openMoreModal('${loan.id}')"
+                                            class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200 hover:border-indigo-600 rounded-xl transition"
+                                        >
+                                            <span>${escapeHtml(t('moreBtnCard'))}</span>
+                                            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Loan Given/Received BS Date & Due BS Date Pills -->
+                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-600">
+                                    <span class="inline-flex items-center gap-1 font-medium">
+                                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                        <span>${escapeHtml(datePrefix)}: <strong class="text-slate-800">${escapeHtml(formatBsDisplay(loan.startDate))}</strong></span>
+                                    </span>
+                                    ${loan.dueDate ? `
+                                        <span class="inline-flex items-center gap-1 font-medium ${m.isOverdue ? 'text-rose-600 font-bold' : ''}">
+                                            <i data-lucide="clock" class="w-3.5 h-3.5 ${m.isOverdue ? 'text-rose-600' : 'text-slate-400'}"></i>
+                                            <span>${escapeHtml(t('duePrefix'))}: <strong>${escapeHtml(formatBsDisplay(loan.dueDate))}</strong></span>
+                                        </span>
+                                    ` : ''}
+                                </div>
+
+                                <!-- Note / Installment Reminder -->
+                                ${loan.note ? `<p class="text-xs text-slate-500 mt-1 truncate">${escapeHtml(loan.note)}</p>` : ''}
+
+                                <!-- Financial Metrics Row -->
+                                <div class="mt-3.5 pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                    <div>
+                                        <span class="text-slate-400 block">${escapeHtml(t('principalShort'))}</span>
+                                        <span class="font-bold text-slate-800">${formatNPR(m.principal)}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-400 block">${escapeHtml(t('interestShort'))} (${toLocaleDigits(m.rate)}%)</span>
+                                        <span class="font-bold text-amber-600">+${formatNPR(m.interestAmount)}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-400 block">${escapeHtml(paidLabel)}</span>
+                                        <span class="font-bold text-emerald-600">${formatNPR(m.paid)}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-400 block">${escapeHtml(t('remainingShort'))}</span>
+                                        <span class="font-extrabold ${loan.settled ? 'text-slate-400' : isCredit ? 'text-emerald-700' : 'text-rose-600'}">
+                                            ${formatNPR(m.remaining)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Mini Progress Bar -->
+                                <div class="mt-2.5 flex items-center gap-2.5">
+                                    <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="h-full ${loan.settled ? 'bg-emerald-500' : isCredit ? 'bg-emerald-500' : 'bg-indigo-500'} rounded-full transition-all" style="width: ${m.progressPct}%"></div>
+                                    </div>
+                                    <span class="text-[11px] font-semibold text-slate-500">${toLocaleDigits(m.progressPct)}% ${escapeHtml(progressSuffix)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        /**
+         * Refresh entire UI
+         */
+        function refreshApp() {
+            renderSummaryCards();
+            renderTodoList();
+            if (activeModalLoanId) {
+                const exists = loans.find(l => l.id === activeModalLoanId);
+                if (exists) {
+                    populateMoreModal(exists);
+                } else {
+                    closeMoreModal();
+                }
+            }
+        }
+
+        /**
+         * Handle Filter Tab Selection
+         */
+        function setFilter(filter) {
+            activeFilter = filter;
+            document.querySelectorAll('.filter-tab').forEach(btn => {
+                if (btn.dataset.filter === filter) {
+                    btn.className = 'filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition bg-indigo-600 text-white shadow-sm';
+                } else {
+                    btn.className = 'filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition bg-slate-100 text-slate-600 hover:bg-slate-200';
+                }
+            });
+            renderTodoList();
+        }
+
+        /**
+         * Handle Search Input
+         */
+        function handleSearch(value) {
+            searchQuery = value;
+            renderTodoList();
+        }
+
+        /**
+         * Toggle Settled / Completed Checkbox on To-Do List
+         */
+        function toggleLoanSettled(id) {
+            const loan = loans.find(l => l.id === id);
+            if (!loan) return;
+
+            loan.settled = !loan.settled;
+            if (loan.settled) {
+                const m = calculateLoanMetrics(loan);
+                if (loan.paidAmount < m.totalDue) {
+                    const diff = m.totalDue - loan.paidAmount;
+                    loan.paidAmount = m.totalDue;
+                    loan.payments.unshift({
+                        id: 'pay-' + Date.now(),
+                        date: getBsDateOffset(0),
+                        amount: diff,
+                        note: currentLang === 'ne' ? 'पूर्ण फर्स्यौट गरिएको' : 'Marked as fully settled'
+                    });
+                }
+                showToast(
+                    currentLang === 'ne'
+                        ? `"${loan.personName}" को ऋण फर्स्यौट भयो!`
+                        : `Marked "${loan.personName}" as settled!`,
+                    'success'
+                );
+            } else {
+                showToast(
+                    currentLang === 'ne'
+                        ? `"${loan.personName}" को ऋण पुनः सक्रिय गरियो।`
+                        : `Reopened "${loan.personName}" as active.`,
+                    'info'
+                );
+            }
+
+            saveLoans();
+            refreshApp();
+        }
+
+        /**
+         * Handle Form Submission (Desktop Sidebar or Mobile Modal)
+         */
+        function handleFormSubmit(event, source) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+
+            const personName = formData.get('personName').trim();
+            const type = formData.get('type');
+            const principal = parseFloat(formData.get('principal'));
+            const interestRate = parseFloat(formData.get('interestRate')) || 0;
+            const startDate = formData.get('startDate');
+            const dueDate = formData.get('dueDate') || '';
+            const paidAmount = parseFloat(formData.get('paidAmount')) || 0;
+            const note = formData.get('note').trim();
+
+            if (!personName || isNaN(principal) || principal <= 0 || !parseBsString(startDate)) {
+                showToast(
+                    currentLang === 'ne'
+                        ? 'कृपया सबै आवश्यक विवरण र मान्य वि.सं. मिति भर्नुहोस्।'
+                        : 'Please fill in all required fields with valid amounts and BS dates.',
+                    'error'
+                );
+                return;
+            }
+
+            const initialPayments = [];
+            if (paidAmount > 0) {
+                initialPayments.push({
+                    id: 'pay-' + Date.now(),
+                    date: startDate,
+                    amount: paidAmount,
+                    note: type === 'credit'
+                        ? (currentLang === 'ne' ? 'सुरुमा प्राप्त रकम' : 'Initial amount received')
+                        : (currentLang === 'ne' ? 'सुरुमा तिरेको रकम' : 'Initial amount paid')
+                });
+            }
+
+            const newLoan = {
+                id: 'loan-' + Date.now(),
+                personName,
+                type,
+                principal,
+                interestRate,
+                startDate,
+                dueDate,
+                note,
+                paidAmount,
+                settled: paidAmount >= principal && interestRate === 0,
+                payments: initialPayments
+            };
+
+            loans.unshift(newLoan);
+            saveLoans();
+            form.reset();
+
+            // Reset default BS dates, rate & labels
+            const prefix = source === 'desktop' ? 'd' : 'm';
+            setBsInputValue(`${prefix}-start`, getBsDateOffset(0));
+            setBsInputValue(`${prefix}-due`, getBsDateOffset(30));
+            const rateInput = form.querySelector('input[name="interestRate"]');
+            if (rateInput) rateInput.value = '12';
+            updateFormLabels(source);
+
+            if (source === 'modal') {
+                closeAddModal();
+            }
+
+            refreshApp();
+            showToast(
+                currentLang === 'ne'
+                    ? `${personName} को लागि नयाँ ऋण विवरण थपियो।`
+                    : `Added ${type === 'credit' ? 'Credit' : 'Debit'} entry for ${personName}.`,
+                'success'
+            );
+        }
+
+        /**
+         * Open "More" Pop-up Modal with Full Details
+         */
+        function openMoreModal(id) {
+            const loan = loans.find(l => l.id === id);
+            if (!loan) return;
+
+            activeModalLoanId = id;
+            pendingDeleteId = null;
+            setBsInputValue('payment-date-input', getBsDateOffset(0));
+            populateMoreModal(loan);
+
+            const modal = document.getElementById('more-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        /**
+         * Populate "More" Pop-up Modal fields
+         */
+        function populateMoreModal(loan) {
+            const m = calculateLoanMetrics(loan);
+            const isCredit = loan.type === 'credit';
+
+            // Initials Avatar
+            const initials = loan.personName
+                .split(' ')
+                .map(n => n[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase() || 'ML';
+            const avatarEl = document.getElementById('modal-avatar');
+            avatarEl.textContent = initials;
+            avatarEl.className = `w-11 h-11 rounded-2xl font-bold text-base flex items-center justify-center shrink-0 ${
+                isCredit ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+            }`;
+
+            document.getElementById('modal-person-title').textContent = loan.personName;
+            document.getElementById('modal-note-subtitle').textContent = loan.note || t('noNotesSub');
+
+            // Type Badge
+            const typeBadge = document.getElementById('modal-type-badge');
+            typeBadge.textContent = isCredit ? t('kpiCreditBadge') : t('kpiDebitBadge');
+            typeBadge.className = `text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                isCredit ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+            }`;
+
+            // Status Badge
+            const statusBadge = document.getElementById('modal-status-badge');
+            statusBadge.textContent = m.status;
+            statusBadge.className = `text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                m.statusKey === 'statusSettled'
+                    ? 'bg-slate-200 text-slate-800'
+                    : m.statusKey === 'statusOverdue'
+                    ? 'bg-rose-600 text-white'
+                    : m.statusKey === 'statusPartial'
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-indigo-100 text-indigo-800'
+            }`;
+
+            // Breakdown Grid & Contextual Labels (BS Dates)
+            document.getElementById('detail-start-label').textContent = isCredit ? t('givenDateLabel') : t('receivedDateLabel');
+            document.getElementById('detail-start-val').textContent = formatBsDisplay(loan.startDate);
+
+            const dueEl = document.getElementById('detail-due-val');
+            dueEl.textContent = loan.dueDate ? formatBsDisplay(loan.dueDate) : formatBsDisplay('');
+            dueEl.className = `text-sm font-extrabold mt-0.5 block ${m.isOverdue ? 'text-rose-600' : 'text-slate-900'}`;
+
+            const dayWord = m.daysElapsed === 1 ? t('daySingular') : t('dayPlural');
+            document.getElementById('detail-days').textContent = `${toLocaleDigits(m.daysElapsed)} ${dayWord}`;
+            document.getElementById('detail-principal').textContent = formatNPR(m.principal);
+            document.getElementById('detail-interest-label').textContent = `${t('detailAccruedPrefix')} (${toLocaleDigits(m.rate)}%)`;
+            document.getElementById('detail-interest').textContent = `+${formatNPR(m.interestAmount)}`;
+            document.getElementById('detail-total-label').textContent = isCredit ? t('detailTotalReceivable') : t('detailTotalPayable');
+            document.getElementById('detail-total').textContent = formatNPR(m.totalDue);
+
+            document.getElementById('detail-paid-label').textContent = isCredit ? t('receivedSoFar') : t('paidSoFar');
+            document.getElementById('detail-paid').textContent = formatNPR(m.paid);
+            document.getElementById('detail-remaining').textContent = formatNPR(m.remaining);
+            document.getElementById('detail-progress-pct').textContent = `${toLocaleDigits(m.progressPct)}%`;
+            document.getElementById('detail-progress-bar').style.width = `${m.progressPct}%`;
+
+            // Contextual Payment Form Labels
+            document.getElementById('payment-date-label').textContent = isCredit ? t('dateReceivedLabel') : t('datePaidLabel');
+            document.getElementById('record-payment-btn').textContent = isCredit ? t('recordReceiptBtn') : t('recordPaymentBtn');
+
+            // Payment History List (sorted newest BS date first)
+            const sortedPayments = [...(loan.payments || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            const entryWord = sortedPayments.length === 1 ? t('entrySingular') : t('entryPlural');
+            document.getElementById('detail-payment-count').textContent = `${toLocaleDigits(sortedPayments.length)} ${entryWord}`;
+
+            const historyContainer = document.getElementById('payment-history-list');
+            if (sortedPayments.length === 0) {
+                historyContainer.innerHTML = `
+                    <p class="text-xs text-slate-400 italic py-3 text-center bg-slate-50 rounded-xl border border-slate-100">
+                        ${escapeHtml(t('noPaymentsEmpty'))}
+                    </p>
+                `;
+            } else {
+                historyContainer.innerHTML = sortedPayments.map(p => `
+                    <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs">
+                        <div class="min-w-0 flex-1">
+                            <span class="font-bold text-slate-800">${formatNPR(p.amount)}</span>
+                            <span class="text-slate-500 block text-[11px] truncate">${escapeHtml(p.note || (isCredit ? t('receivedSoFar') : t('paidSoFar')))}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                                <i data-lucide="calendar-check" class="w-3 h-3"></i>
+                                ${escapeHtml(formatBsDisplay(p.date))}
+                            </span>
+                            <button type="button" onclick="deletePaymentEntry('${p.id}')" title="Delete installment" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Toggle Settle Button State
+            const settleBtn = document.getElementById('modal-toggle-settle-btn');
+            if (loan.settled) {
+                settleBtn.innerHTML = `<i data-lucide="rotate-ccw" class="w-4 h-4"></i><span>${escapeHtml(t('reopenLoanBtn'))}</span>`;
+                settleBtn.className = 'inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-xl transition';
+            } else {
+                settleBtn.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i><span>${escapeHtml(t('markSettledBtn'))}</span>`;
+                settleBtn.className = 'inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition';
+            }
+
+            // Reset Delete Button State
+            const delBtn = document.getElementById('modal-delete-btn');
+            delBtn.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4"></i><span>${escapeHtml(t('deleteRecordBtn'))}</span>`;
+            delBtn.className = 'inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition';
+
+            lucide.createIcons();
+        }
+
+        /**
+         * Delete an individual installment entry inside the "More" modal and recalculate paid total
+         */
+        function deletePaymentEntry(paymentId) {
+            if (!activeModalLoanId) return;
+            const loan = loans.find(l => l.id === activeModalLoanId);
+            if (!loan) return;
+
+            const idx = (loan.payments || []).findIndex(p => p.id === paymentId);
+            if (idx === -1) return;
+
+            const removed = loan.payments.splice(idx, 1)[0];
+            loan.paidAmount = Math.max(0, (Number(loan.paidAmount) || 0) - (Number(removed.amount) || 0));
+            const m = calculateLoanMetrics(loan);
+            if (loan.paidAmount < m.totalDue) {
+                loan.settled = false;
+            }
+
+            saveLoans();
+            refreshApp();
+            showToast(
+                currentLang === 'ne' ? 'भुक्तानी प्रविष्टि हटाइयो।' : 'Removed installment entry.',
+                'info'
+            );
+        }
+
+        /**
+         * Close "More" Pop-up Modal
+         */
+        function closeMoreModal() {
+            const modal = document.getElementById('more-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            activeModalLoanId = null;
+            pendingDeleteId = null;
+            document.body.style.overflow = '';
+        }
+
+        /**
+         * Record a new payment/receipt with custom BS date inside the "More" Modal
+         */
+        function handleRecordPayment(event) {
+            event.preventDefault();
+            if (!activeModalLoanId) return;
+
+            const loan = loans.find(l => l.id === activeModalLoanId);
+            if (!loan) return;
+
+            const amountInput = document.getElementById('payment-amount-input');
+            const dateInput = document.getElementById('payment-date-input');
+            const noteInput = document.getElementById('payment-note-input');
+            const amount = parseFloat(amountInput.value);
+            const paymentDate = parseBsString(dateInput.value) ? dateInput.value : getBsDateOffset(0);
+            const defaultNote = loan.type === 'credit'
+                ? (currentLang === 'ne' ? 'किस्ता प्राप्त' : 'Installment received')
+                : (currentLang === 'ne' ? 'किस्ता भुक्तानी' : 'Installment paid');
+            const note = noteInput.value.trim() || defaultNote;
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast(
+                    currentLang === 'ne' ? 'कृपया मान्य रकम प्रविष्ट गर्नुहोस्।' : 'Please enter a valid payment amount.',
+                    'error'
+                );
+                return;
+            }
+
+            loan.paidAmount = (Number(loan.paidAmount) || 0) + amount;
+            loan.payments.unshift({
+                id: 'pay-' + Date.now(),
+                date: paymentDate,
+                amount,
+                note
+            });
+
+            const m = calculateLoanMetrics(loan);
+            if (loan.paidAmount >= m.totalDue) {
+                loan.settled = true;
+                showToast(
+                    currentLang === 'ne'
+                        ? `पूर्ण रकम फर्स्यौट भयो! "${loan.personName}" को खाता पूरा भयो।`
+                        : `Full balance settled! "${loan.personName}" is now complete.`,
+                    'success'
+                );
+            } else {
+                showToast(
+                    currentLang === 'ne'
+                        ? `${formatBsDisplay(paymentDate)} मा ${formatNPR(amount)} दर्ता गरियो।`
+                        : `Recorded ${formatNPR(amount)} on ${formatBsDisplay(paymentDate)}.`,
+                    'success'
+                );
+            }
+
+            amountInput.value = '';
+            setBsInputValue('payment-date-input', getBsDateOffset(0));
+            noteInput.value = '';
+
+            saveLoans();
+            refreshApp();
+        }
+
+        /**
+         * Toggle settled status directly from the "More" Modal
+         */
+        function toggleSettleCurrentLoan() {
+            if (!activeModalLoanId) return;
+            toggleLoanSettled(activeModalLoanId);
+        }
+
+        /**
+         * Two-step safe delete (no browser confirm() popup)
+         */
+        function confirmDeleteCurrentLoan() {
+            if (!activeModalLoanId) return;
+            const delBtn = document.getElementById('modal-delete-btn');
+
+            if (pendingDeleteId !== activeModalLoanId) {
+                pendingDeleteId = activeModalLoanId;
+                delBtn.innerHTML = `<i data-lucide="alert-triangle" class="w-4 h-4"></i><span>${escapeHtml(t('confirmDeleteBtn'))}</span>`;
+                delBtn.className = 'inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition shadow-sm';
+                lucide.createIcons();
+                return;
+            }
+
+            const target = loans.find(l => l.id === activeModalLoanId);
+            loans = loans.filter(l => l.id !== activeModalLoanId);
+            saveLoans();
+            closeMoreModal();
+            refreshApp();
+            showToast(
+                currentLang === 'ne'
+                    ? `${target ? target.personName + ' को ' : ''}ऋण विवरण मेटाइयो।`
+                    : `Deleted loan record${target ? ' for ' + target.personName : ''}.`,
+                'info'
+            );
+        }
+
+        /**
+         * Build a SheetJS worksheet for an individual person's summary + chronological transaction ledger (BS dates + EN/NE headers)
+         */
+        function buildPersonLedgerWorksheet(loan) {
+            const m = calculateLoanMetrics(loan);
+            const isCredit = loan.type === 'credit';
+            const todayBs = getBsDateOffset(0);
+            const isNe = currentLang === 'ne';
+
+            // Build chronological statement rows with running balance
+            const statementRows = [];
+            let runningBalance = 0;
+
+            // 1. Initial Loan Principal Entry
+            runningBalance += m.principal;
+            statementRows.push({
+                date: formatBsDisplay(loan.startDate || todayBs),
+                txType: isCredit
+                    ? (isNe ? 'सुरुवाती ऋण दिएको (साँवा)' : 'Initial Loan Given (Principal)')
+                    : (isNe ? 'सुरुवाती ऋण लिएको (साँवा)' : 'Initial Loan Received (Principal)'),
+                note: loan.note || (isCredit ? 'Loan disbursed' : 'Loan borrowed'),
+                debitOutflow: isCredit ? m.principal : 0,
+                creditInflow: isCredit ? 0 : m.principal,
+                runningBalance: runningBalance
+            });
+
+            // 2. Accrued Interest Entry (if > 0)
+            if (m.interestAmount > 0) {
+                runningBalance += m.interestAmount;
+                statementRows.push({
+                    date: formatBsDisplay(todayBs),
+                    txType: isNe
+                        ? `उठेको साधारण ब्याज (${toLocaleDigits(m.rate)}% वार्षिक, ${toLocaleDigits(m.daysElapsed)} दिन)`
+                        : `Accrued Simple Interest (${m.rate}% p.a. for ${m.daysElapsed} days)`,
+                    note: isNe ? 'निर्यात मितिसम्म गणना गरिएको' : 'Calculated up to export date (BS)',
+                    debitOutflow: isCredit ? m.interestAmount : 0,
+                    creditInflow: isCredit ? 0 : m.interestAmount,
+                    runningBalance: runningBalance
+                });
+            }
+
+            // 3. Chronological Payments / Receipts (oldest BS date first)
+            const chronologicalPayments = [...(loan.payments || [])].sort((a, b) =>
+                (a.date || '').localeCompare(b.date || '')
+            );
+
+            chronologicalPayments.forEach(p => {
+                const amt = Number(p.amount) || 0;
+                runningBalance = Math.max(0, runningBalance - amt);
+                statementRows.push({
+                    date: formatBsDisplay(p.date || todayBs),
+                    txType: isCredit
+                        ? (isNe ? 'किस्ता प्राप्त' : 'Installment Received')
+                        : (isNe ? 'किस्ता भुक्तानी' : 'Installment Paid'),
+                    note: p.note || '',
+                    debitOutflow: isCredit ? 0 : amt,
+                    creditInflow: isCredit ? amt : 0,
+                    runningBalance: loan.settled ? 0 : runningBalance
+                });
+            });
+
+            const aoa = isNe ? [
+                ['मेरोलोन (MEROLOAN) — व्यक्तिगत कारोबार खाता विवरण (रु.)'],
+                ['निर्यात मिति (वि.सं.)', formatBsDisplay(todayBs), '', 'मुद्रा', 'नेपाली रुपैयाँ (रु.)'],
+                [],
+                ['व्यक्ति तथा ऋण सारांश', '', '', 'वित्तीय कुल विवरण (रु.)', ''],
+                ['व्यक्ति / ऋणदाताको नाम', loan.personName, '', 'साँवा रकम (रु.)', m.principal],
+                ['ऋणको प्रकार', isCredit ? 'क्रेडिट (दिएको / लिनुपर्ने)' : 'डेबिट (लिएको / तिर्नुपर्ने)', '', `उठेको ब्याज (${m.rate}% वार्षिक)`, m.interestAmount],
+                [isCredit ? 'ऋण दिएको मिति (वि.सं.)' : 'ऋण लिएको मिति (वि.सं.)', formatBsDisplay(loan.startDate), '', isCredit ? 'कुल लिनुपर्ने रकम (रु.)' : 'कुल तिर्नुपर्ने रकम (रु.)', m.totalDue],
+                ['भाखा मिति (वि.सं.)', loan.dueDate ? formatBsDisplay(loan.dueDate) : 'तोकिएको छैन', '', isCredit ? 'हालसम्म प्राप्त रकम (रु.)' : 'हालसम्म तिरेको रकम (रु.)', m.paid],
+                ['हालको अवस्था', m.status, '', 'बाँकी रकम (रु.)', m.remaining],
+                ['बितेको दिन', `${m.daysElapsed} दिन`, '', 'भुक्तानी प्रगति', `${m.progressPct}%`],
+                ['कैफियत', loan.note || '—', '', '', ''],
+                [],
+                ['क्रमिक कारोबार विवरण (विक्रम संवत्)'],
+                ['मिति (वि.सं.)', 'कारोबारको प्रकार', 'विवरण / सन्दर्भ', 'डेबिट / बाहिरिएको (रु.)', 'क्रेडिट / भित्रिएको (रु.)', 'बाँकी मौज्दात (रु.)']
+            ] : [
+                ['MEROLOAN — INDIVIDUAL TRANSACTION LEDGER STATEMENT (BS)'],
+                ['Generated Date (BS)', formatBsDisplay(todayBs), '', 'Currency', 'Nepali Rupees (Rs.)'],
+                [],
+                ['PERSON & LOAN SUMMARY', '', '', 'FINANCIAL TOTALS (Rs.)', ''],
+                ['Person / Loan Giver Name', loan.personName, '', 'Principal Amount (Rs.)', m.principal],
+                ['Loan Type', isCredit ? 'Credit (Money Given / To Receive)' : 'Debit (Money Received / To Pay)', '', `Accrued Interest (${m.rate}% / yr)`, m.interestAmount],
+                [isCredit ? 'Loan Given Date (BS)' : 'Loan Received Date (BS)', formatBsDisplay(loan.startDate), '', isCredit ? 'Total Receivable (Rs.)' : 'Total Payable (Rs.)', m.totalDue],
+                ['Due / Settlement Date (BS)', loan.dueDate ? formatBsDisplay(loan.dueDate) : 'Not Set', '', isCredit ? 'Total Received So Far (Rs.)' : 'Total Paid So Far (Rs.)', m.paid],
+                ['Current Status', m.status, '', 'Remaining Balance (Rs.)', m.remaining],
+                ['Days Elapsed', `${m.daysElapsed} Days`, '', 'Repayment Progress', `${m.progressPct}%`],
+                ['Loan Notes', loan.note || '—', '', '', ''],
+                [],
+                ['CHRONOLOGICAL TRANSACTION STATEMENT (BIKRAM SAMBAT)'],
+                ['Date (BS)', 'Transaction Type', 'Note / Reference', 'Debit / Outflow (Rs.)', 'Credit / Inflow (Rs.)', 'Running Balance (Rs.)']
+            ];
+
+            statementRows.forEach(row => {
+                aoa.push([
+                    row.date,
+                    row.txType,
+                    row.note,
+                    row.debitOutflow,
+                    row.creditInflow,
+                    row.runningBalance
+                ]);
+            });
+
+            const totalOutflow = statementRows.reduce((sum, r) => sum + r.debitOutflow, 0);
+            const totalInflow = statementRows.reduce((sum, r) => sum + r.creditInflow, 0);
+            aoa.push([
+                '',
+                isNe ? 'कुल जम्मा / अन्तिम बाँकी' : 'TOTALS / CLOSING BALANCE',
+                '',
+                totalOutflow,
+                totalInflow,
+                m.remaining
+            ]);
+
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            ws['!cols'] = [
+                { wch: 26 },
+                { wch: 36 },
+                { wch: 34 },
+                { wch: 26 },
+                { wch: 24 },
+                { wch: 24 }
+            ];
+
+            return ws;
+        }
+
+        function sanitizeSheetName(rawName, usedNames) {
+            let clean = String(rawName || 'Ledger')
+                .replace(/[\\\/\?\*\[\]\:]/g, '')
+                .trim();
+            if (!clean) clean = 'Person_Ledger';
+            clean = clean.slice(0, 28);
+
+            let candidate = clean;
+            let counter = 2;
+            while (usedNames.has(candidate.toLowerCase())) {
+                candidate = `${clean.slice(0, 25)}_${counter}`;
+                counter++;
+            }
+            usedNames.add(candidate.toLowerCase());
+            return candidate;
+        }
+
+        /**
+         * Download an individual person's transaction ledger as an Excel (.xlsx) file
+         */
+        function downloadPersonExcel(loanId) {
+            if (typeof XLSX === 'undefined') {
+                showToast('Excel library is still loading. Please try again.', 'error');
+                return;
+            }
+
+            const loan = loans.find(l => l.id === loanId);
+            if (!loan) return;
+
+            try {
+                const wb = XLSX.utils.book_new();
+                const ws = buildPersonLedgerWorksheet(loan);
+                const sheetTitle = currentLang === 'ne' ? 'व्यक्तिगत_खाता' : 'Person_Ledger';
+                XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
+
+                const safePerson = loan.personName
+                    .trim()
+                    .replace(/[^\w\u0900-\u097F]+/g, '_')
+                    .replace(/^_+|_+$/g, '') || 'Person';
+                const todayBs = getBsDateOffset(0);
+                const filename = `MeroLoan_${safePerson}_${todayBs}_BS.xlsx`;
+
+                XLSX.writeFile(wb, filename);
+                showToast(
+                    currentLang === 'ne'
+                        ? `${loan.personName} को एक्सेल खाता डाउनलोड भयो।`
+                        : `Downloaded Excel ledger for ${loan.personName} (${filename})`,
+                    'success'
+                );
+            } catch (err) {
+                console.error('Excel export failed:', err);
+                showToast('Failed to generate Excel file.', 'error');
+            }
+        }
+
+        function downloadCurrentPersonExcel() {
+            if (!activeModalLoanId) return;
+            downloadPersonExcel(activeModalLoanId);
+        }
+
+        /**
+         * Download a complete master Excel (.xlsx) workbook with an Overview sheet + individual person sheets (BS dates)
+         */
+        function downloadAllLedgersExcel() {
+            if (typeof XLSX === 'undefined') {
+                showToast('Excel library is still loading. Please try again.', 'error');
+                return;
+            }
+
+            if (loans.length === 0) {
+                showToast(currentLang === 'ne' ? 'निर्यात गर्न कुनै विवरण छैन।' : 'No loan records available to export.', 'info');
+                return;
+            }
+
+            try {
+                const wb = XLSX.utils.book_new();
+                const todayBs = getBsDateOffset(0);
+                const isNe = currentLang === 'ne';
+
+                const overviewAoA = isNe ? [
+                    ['मेरोलोन (MEROLOAN) — सम्पूर्ण ऋण तथा खाता विवरण (वि.सं. • रु.)'],
+                    ['निर्यात मिति (वि.सं.)', formatBsDisplay(todayBs), 'जम्मा खाताहरू', loans.length],
+                    [],
+                    [
+                        'व्यक्तिको नाम',
+                        'ऋणको प्रकार',
+                        'दिएको / लिएको मिति (वि.सं.)',
+                        'भाखा मिति (वि.सं.)',
+                        'अवस्था',
+                        'साँवा रकम (रु.)',
+                        'ब्याज दर (% वार्षिक)',
+                        'बितेको दिन',
+                        'उठेको ब्याज (रु.)',
+                        'कुल रकम (रु.)',
+                        'हालसम्म भुक्तानी / प्राप्त (रु.)',
+                        'बाँकी रकम (रु.)',
+                        'कैफियत'
+                    ]
+                ] : [
+                    ['MEROLOAN — MASTER LOAN & LEDGER OVERVIEW (BS • NPR)'],
+                    ['Generated Date (BS)', formatBsDisplay(todayBs), 'Total Accounts', loans.length],
+                    [],
+                    [
+                        'Person Name',
+                        'Loan Type',
+                        'Given / Received Date (BS)',
+                        'Due Date (BS)',
+                        'Status',
+                        'Principal (Rs.)',
+                        'Interest Rate (% p.a.)',
+                        'Days Elapsed',
+                        'Accrued Interest (Rs.)',
+                        'Total Due (Rs.)',
+                        'Paid / Received So Far (Rs.)',
+                        'Remaining Balance (Rs.)',
+                        'Notes'
+                    ]
+                ];
+
+                let sumPrincipal = 0;
+                let sumInterest = 0;
+                let sumTotalDue = 0;
+                let sumPaid = 0;
+                let sumRemaining = 0;
+
+                loans.forEach(loan => {
+                    const m = calculateLoanMetrics(loan);
+                    const isCredit = loan.type === 'credit';
+                    sumPrincipal += m.principal;
+                    sumInterest += m.interestAmount;
+                    sumTotalDue += m.totalDue;
+                    sumPaid += m.paid;
+                    sumRemaining += m.remaining;
+
+                    overviewAoA.push([
+                        loan.personName,
+                        isCredit
+                            ? (isNe ? 'क्रेडिट (लिनुपर्ने)' : 'Credit (To Receive)')
+                            : (isNe ? 'डेबिट (तिर्नुपर्ने)' : 'Debit (To Pay)'),
+                        formatBsDisplay(loan.startDate),
+                        loan.dueDate ? formatBsDisplay(loan.dueDate) : (isNe ? 'तोकिएको छैन' : 'Not Set'),
+                        m.status,
+                        m.principal,
+                        m.rate,
+                        m.daysElapsed,
+                        m.interestAmount,
+                        m.totalDue,
+                        m.paid,
+                        m.remaining,
+                        loan.note || ''
+                    ]);
+                });
+
+                overviewAoA.push([
+                    isNe ? 'कुल जम्मा' : 'GRAND TOTALS',
+                    '',
+                    '',
+                    '',
+                    '',
+                    sumPrincipal,
+                    '',
+                    '',
+                    sumInterest,
+                    sumTotalDue,
+                    sumPaid,
+                    sumRemaining,
+                    ''
+                ]);
+
+                const overviewWs = XLSX.utils.aoa_to_sheet(overviewAoA);
+                overviewWs['!cols'] = [
+                    { wch: 24 },
+                    { wch: 22 },
+                    { wch: 22 },
+                    { wch: 20 },
+                    { wch: 14 },
+                    { wch: 18 },
+                    { wch: 18 },
+                    { wch: 14 },
+                    { wch: 20 },
+                    { wch: 18 },
+                    { wch: 24 },
+                    { wch: 22 },
+                    { wch: 32 }
+                ];
+                const overviewTabName = isNe ? 'सबै_ऋण_सारांश' : 'All Loans Overview';
+                XLSX.utils.book_append_sheet(wb, overviewWs, overviewTabName);
+
+                const usedSheetNames = new Set([overviewTabName.toLowerCase()]);
+                loans.forEach(loan => {
+                    const sheetName = sanitizeSheetName(loan.personName, usedSheetNames);
+                    const personWs = buildPersonLedgerWorksheet(loan);
+                    XLSX.utils.book_append_sheet(wb, personWs, sheetName);
+                });
+
+                const filename = `MeroLoan_All_Ledgers_${todayBs}_BS.xlsx`;
+                XLSX.writeFile(wb, filename);
+                showToast(
+                    isNe
+                        ? `${loans.length} व्यक्तिहरूको खातासहित मुख्य एक्सेल फाइल डाउनलोड भयो।`
+                        : `Downloaded master workbook with ${loans.length} person ledgers (${filename})`,
+                    'success'
+                );
+            } catch (err) {
+                console.error('Master Excel export failed:', err);
+                showToast('Failed to generate master Excel file.', 'error');
+            }
+        }
+
+        /**
+         * Open / Close Add Loan Modal
+         */
+        function openAddModal() {
+            const modal = document.getElementById('add-loan-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAddModal() {
+            const modal = document.getElementById('add-loan-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = '';
+        }
+
+        /**
+         * Reset Demo Data
+         */
+        function resetDemoData() {
+            loans = getInitialSampleLoans();
+            saveLoans();
+            refreshApp();
+            showToast(
+                currentLang === 'ne'
+                    ? 'नमूना नेपाली ऋण विवरण पुनःस्थापना गरियो।'
+                    : 'Sample Nepali loan records restored.',
+                'info'
+            );
+        }
+
+        /**
+         * Custom Non-blocking Toast Notification
+         */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-slate-900 text-white border-emerald-500',
+                error: 'bg-rose-900 text-white border-rose-400',
+                info: 'bg-slate-900 text-white border-indigo-400'
+            };
+
+            const icons = {
+                success: 'check-circle-2',
+                error: 'alert-circle',
+                info: 'info'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl border-l-4 text-xs font-medium transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i>
+                <span class="flex-1">${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(8px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /**
+         * Basic HTML escaping helper
+         */
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Close modals on Escape key or backdrop click
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const pickerModal = document.getElementById('bs-picker-modal');
+                if (pickerModal && !pickerModal.classList.contains('hidden')) {
+                    closeBsPicker();
+                    return;
+                }
+                closeMoreModal();
+                closeAddModal();
+            }
+        });
+
+        document.getElementById('more-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'more-modal') closeMoreModal();
+        });
+
+        document.getElementById('add-loan-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'add-loan-modal') closeAddModal();
+        });
+
+        document.getElementById('bs-picker-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'bs-picker-modal') closeBsPicker();
+        });
+
+        // Initialize Application on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                const savedLang = localStorage.getItem(LANG_STORAGE_KEY);
+                if (savedLang === 'ne' || savedLang === 'en') {
+                    currentLang = savedLang;
+                }
+            } catch (e) {}
+
+            const todayBs = getBsDateOffset(0);
+            const defaultDueBs = getBsDateOffset(30);
+
+            setBsInputValue('d-start', todayBs);
+            setBsInputValue('m-start', todayBs);
+            setBsInputValue('d-due', defaultDueBs);
+            setBsInputValue('m-due', defaultDueBs);
+            setBsInputValue('payment-date-input', todayBs);
+
+            loadLoans();
+            setLanguage(currentLang);
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
