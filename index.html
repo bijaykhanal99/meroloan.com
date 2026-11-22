@@ -9,6 +9,8 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Optional runtime config injected by GitHub Actions from GitHub Secrets -->
+  <script src="./config.js" onerror="window.MERO_LOAN_CONFIG_MISSING=true"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -50,7 +52,6 @@
     .tabular-nums {
       font-variant-numeric: tabular-nums;
     }
-    /* Custom scrollbar for tables and modals */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -121,8 +122,8 @@
             <p class="text-slate-300">Loans can only be created between accepted friends. Non-friends cannot lend or borrow.</p>
           </div>
           <div class="p-3.5 rounded-xl bg-white/5 border border-white/10">
-            <div class="font-semibold text-amber-300 mb-1">2. Two-Party Privacy</div>
-            <p class="text-slate-300">Each loan and repayment is visible only to the lender and borrower involved.</p>
+            <div class="font-semibold text-amber-300 mb-1">2. Two-Party Approval &amp; Privacy</div>
+            <p class="text-slate-300">Loans enter active karobar once accepted by the counterparty and remain private to those two users.</p>
           </div>
           <div class="p-3.5 rounded-xl bg-white/5 border border-white/10">
             <div class="font-semibold text-sky-300 mb-1">3. Borrower Repayment Flow</div>
@@ -258,7 +259,7 @@
 
             <div>
               <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                Email (Optional for Supabase Auth)
+                Email (Optional)
               </label>
               <input
                 id="regEmail"
@@ -427,11 +428,11 @@
           <div class="space-y-0.5">
             <p class="font-semibold">Private Two-Party Ledger &amp; Repayment Rules</p>
             <p class="text-brand-800 text-xs">
-              Only loans where you are the <strong>Lender</strong> or <strong>Borrower</strong> appear here. If you are the <strong>Borrower (Loan Liyeko)</strong>, click <strong>Repay</strong> to record payments. If you are the <strong>Lender (Loan Diyeko)</strong>, you can view details &amp; repayment history.
+              Only accepted loans where you are the <strong>Lender</strong> or <strong>Borrower</strong> appear here. If you are the <strong>Borrower (Loan Liyeko)</strong>, click <strong>Repay</strong> to record payments. If you are the <strong>Lender (Loan Diyeko)</strong>, you can view details &amp; repayment history.
             </p>
           </div>
           <button onclick="switchAppTab('new-loan')" class="shrink-0 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition">
-            + Create Friend Loan
+            + Propose Friend Loan
           </button>
         </div>
 
@@ -439,7 +440,7 @@
         <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 class="text-base sm:text-lg font-bold text-slate-900">Your Private Karobar (Loans &amp; Transactions)</h2>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">Your Private Karobar (Accepted Loans &amp; Transactions)</h2>
               <p class="text-xs text-slate-500">All dates displayed in Nepali Bikram Sambat (BS)</p>
             </div>
 
@@ -452,7 +453,7 @@
 
               <select id="filterStatusSelect" onchange="renderLoansTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium bg-white focus:border-brand-600 outline-none">
                 <option value="all">All Statuses</option>
-                <option value="pending">Pending / Partial</option>
+                <option value="pending">Active / Partial</option>
                 <option value="settled">Settled / Paid</option>
               </select>
 
@@ -491,16 +492,16 @@
       <section id="tab-new-loan" class="app-tab-panel hidden">
         <div class="max-w-3xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
           <div class="border-b border-slate-100 pb-4">
-            <h2 class="text-xl font-bold text-slate-900">Create New Friend Loan (Karobar)</h2>
+            <h2 class="text-xl font-bold text-slate-900">Propose New Friend Loan (Karobar)</h2>
             <p class="text-xs sm:text-sm text-slate-500 mt-1">
-              You can only select an <strong>accepted friend</strong>. Both parties will see this karobar privately on their own accounts.
+              You can only select an <strong>accepted friend</strong>. Once proposed, the other party must click <strong>Accept</strong> before it enters active karobar.
             </p>
           </div>
 
           <div id="noFriendsAlert" class="hidden p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <p class="font-semibold">No accepted friends yet!</p>
-              <p class="text-xs text-amber-800 mt-0.5">Send a friend request and accept it before creating a loan.</p>
+              <p class="text-xs text-amber-800 mt-0.5">Send a friend request and accept it before proposing a loan.</p>
             </div>
             <button type="button" onclick="switchAppTab('friends')" class="px-3.5 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold shrink-0">
               Go to Friends
@@ -581,7 +582,7 @@
                 Cancel
               </button>
               <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition">
-                Save Loan Record
+                Send Loan Proposal
               </button>
             </div>
           </form>
@@ -751,7 +752,7 @@
             <div>
               <h2 class="text-xl font-bold text-slate-900">Supabase Backend &amp; GitHub Pages Live Guide</h2>
               <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Connect Supabase once, run the SQL schema, and publish this <code class="font-mono">index.html</code> file on GitHub Pages.
+                Auto-connects via GitHub Secrets (<code class="font-mono">config.js</code>) or manual Project URL &amp; Anon Key.
               </p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
@@ -780,12 +781,11 @@
             </div>
 
             <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-2">
-              <div class="font-bold text-emerald-950 text-sm">Step 2: Host Live on GitHub Pages</div>
+              <div class="font-bold text-emerald-950 text-sm">Step 2: Link GitHub Secrets + GitHub Actions</div>
               <ol class="list-decimal list-inside space-y-1 text-slate-700 leading-relaxed">
-                <li>Create a GitHub repository and upload this file as <code class="font-mono">index.html</code>.</li>
-                <li>Go to repository <strong>Settings → Pages</strong>.</li>
-                <li>Select branch <strong>main</strong> and folder <strong>/ (root)</strong>, then save to go live.</li>
-                <li>Open your live GitHub Pages URL, click <strong>Supabase &amp; SQL Setup</strong>, and enter your Project URL &amp; Anon Key.</li>
+                <li>Add <code class="font-mono">SUPABASE_URL</code> and <code class="font-mono">SUPABASE_ANON_KEY</code> in GitHub <strong>Settings → Secrets and variables → Actions</strong>.</li>
+                <li>Add <code class="font-mono">.github/workflows/deploy-mero-loan.yml</code> to your repository.</li>
+                <li>Set <strong>Settings → Pages → Source</strong> to <strong>GitHub Actions</strong>.</li>
               </ol>
             </div>
           </div>
@@ -804,7 +804,7 @@
     </main>
   </div>
 
-  <!-- INLINE CONFIRMATION MODAL (replaces native confirm()) -->
+  <!-- INLINE CONFIRMATION MODAL -->
   <div id="confirmModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4">
       <h3 id="confirmModalTitle" class="text-base font-bold text-slate-900">Confirm Action</h3>
@@ -845,7 +845,7 @@
       <div class="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
         <div>
           <h3 class="text-lg font-bold text-slate-900">Supabase Backend Setup &amp; SQL Schema (GitHub Pages Ready)</h3>
-          <p class="text-xs text-slate-500">Connect your Supabase project URL &amp; anon key or copy the SQL schema to run in Supabase SQL Editor.</p>
+          <p class="text-xs text-slate-500">Connects automatically via GitHub Secrets (<code class="font-mono">config.js</code>) or manual URL &amp; Anon Key.</p>
         </div>
         <button onclick="closeSupabaseModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold">
           ✕
@@ -856,7 +856,7 @@
         <!-- Live Supabase Credentials Form -->
         <form onsubmit="handleSaveSupabaseConfig(event)" class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <span class="text-sm font-bold text-slate-900">1. Connect Supabase Project (Optional Live Sync)</span>
+            <span class="text-sm font-bold text-slate-900">1. Supabase Project Connection</span>
             <span id="modalConnBadge" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">Using Local Demo State</span>
           </div>
 
@@ -891,14 +891,6 @@
           </div>
           <pre id="sqlSchemaBlock" class="p-4 rounded-2xl bg-slate-950 text-emerald-300 text-xs font-mono overflow-x-auto leading-relaxed max-h-72"></pre>
         </div>
-
-        <!-- GitHub Pages Deployment Note -->
-        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-1.5">
-          <p class="font-bold">3. Hosting on GitHub Pages</p>
-          <p>
-            Commit this single <code class="font-mono font-semibold">index.html</code> file to your GitHub repository, enable <strong>GitHub Pages</strong> (Deploy from branch → <code class="font-mono">main</code> / root), and run the SQL script above inside your Supabase project's SQL Editor.
-          </p>
-        </div>
       </div>
     </div>
   </div>
@@ -907,15 +899,6 @@
   <!-- APPLICATION LOGIC: NEPALI BS CALENDAR (UP TO 2099), STATE & SUPABASE  -->
   <!-- ===================================================================== -->
   <script>
-    /**
-     * NEPALI BIKRAM SAMBAT (BS) CALENDAR ENGINE (UP TO 2099 BS)
-     * -----------------------------------------------------------------------
-     * Contains exact month lengths for BS years 2075 to 2099 (25 years),
-     * anchored to a known reference date:
-     *   2083 Kartik 17 BS = Sunday, November 2, 2026 AD (UTC midnight).
-     * Also provides `addNepaliYearCalendar(bsYear, monthDaysArray)` so future
-     * years after 2099 BS can be appended cleanly without modifying core code.
-     */
     const NEPALI_MONTHS_EN = [
       'Baishakh', 'Jestha', 'Ashadh', 'Shrawan',
       'Bhadra', 'Ashwin', 'Kartik', 'Mangsir',
@@ -928,7 +911,6 @@
       'पुष', 'माघ', 'फागुन', 'चैत'
     ];
 
-    // Month day counts for Bikram Sambat 2075 through 2099 (12 months each)
     const NEPALI_BS_CALENDAR = {
       2075: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
       2076: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
@@ -957,13 +939,9 @@
       2099: [31, 32, 31, 32, 30, 31, 30, 29, 30, 29, 30, 30]
     };
 
-    // Anchor: 2083 Kartik 17 BS = 2026-11-02 (UTC)
     const BS_ANCHOR = { year: 2083, month: 7, day: 17 };
-    const AD_ANCHOR_UTC_MS = Date.UTC(2026, 10, 2); // Nov is 10 (0-indexed)
+    const AD_ANCHOR_UTC_MS = Date.UTC(2026, 10, 2);
 
-    /**
-     * Extends NEPALI_BS_CALENDAR with a new BS year and 12 month day counts.
-     */
     function addNepaliYearCalendar(bsYear, monthDays) {
       const yearNum = Number(bsYear);
       if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2300) {
@@ -983,9 +961,6 @@
       return NEPALI_BS_CALENDAR[yearNum];
     }
 
-    /**
-     * Converts a { year, month (1..12), day } BS object into total days since BS_ANCHOR.
-     */
     function bsToTotalDaysFromAnchor(bs) {
       const targetYear = Number(bs.year);
       const targetMonth = Number(bs.month);
@@ -1003,7 +978,6 @@
           if (!mArr) throw new Error(`Missing BS calendar for year ${y}`);
           days += mArr.reduce((a, b) => a + b, 0);
         }
-        // Subtract anchor prefix days in BS_ANCHOR.year, add target prefix days in targetYear
         const anchorYearArr = NEPALI_BS_CALENDAR[BS_ANCHOR.year];
         let anchorDaysIntoYear = BS_ANCHOR.day - 1;
         for (let m = 1; m < BS_ANCHOR.month; m++) {
@@ -1018,7 +992,6 @@
 
         return days - anchorDaysIntoYear + targetDaysIntoYear;
       } else {
-        // Earlier than BS_ANCHOR.year
         for (let y = targetYear + 1; y <= BS_ANCHOR.year; y++) {
           const mArr = NEPALI_BS_CALENDAR[y];
           if (!mArr) throw new Error(`Missing BS calendar for year ${y}`);
@@ -1040,9 +1013,6 @@
       }
     }
 
-    /**
-     * Converts a JS Date (interpreted in local calendar date) to { year, month, day } BS.
-     */
     function adDateToBs(jsDate = new Date()) {
       const utcMidnight = Date.UTC(jsDate.getFullYear(), jsDate.getMonth(), jsDate.getDate());
       const diffDays = Math.floor((utcMidnight - AD_ANCHOR_UTC_MS) / 86400000);
@@ -1088,9 +1058,6 @@
       return { year, month, day };
     }
 
-    /**
-     * Converts { year, month, day } BS to a local JS Date object.
-     */
     function bsToAdDate(bs) {
       const offsetDays = bsToTotalDaysFromAnchor(bs);
       const utcMs = AD_ANCHOR_UTC_MS + offsetDays * 86400000;
@@ -1132,7 +1099,7 @@
     }
 
     // =====================================================================
-    // APPLICATION STATE & INITIAL DEMO DATA
+    // APPLICATION STATE & SUPABASE CONFIG (SUPPORTS GITHUB SECRETS config.js)
     // =====================================================================
     const STORAGE_KEY_SB_CFG = 'mero_loan_supabase_config_v1';
     const STORAGE_KEY_LOCAL_CACHE = 'mero_loan_local_cache_v1';
@@ -1281,7 +1248,7 @@
     };
 
     // =====================================================================
-    // TOAST & UI HELPERS (NO browser alert/confirm)
+    // TOAST & UI HELPERS
     // =====================================================================
     function showToast(message, type = 'info') {
       const container = document.getElementById('toastContainer');
@@ -1682,7 +1649,6 @@
         badge.classList.add('hidden');
       }
 
-      // Count loans where me.id is the counterparty awaiting acceptance
       const pendingApprovalsForMe = appState.loans.filter(
         (l) => l.status === 'pending' && canUserAccessLoan(l, me.id) && l.counterparty_id === me.id
       ).length;
@@ -1697,10 +1663,6 @@
       }
     }
 
-    /**
-     * Strictly returns ONLY active/settled loans where currentUser is lender or borrower.
-     * Pending loans wait in Pending Loan Approvals until accepted by counterparty.
-     */
     function getMyPrivateLoans() {
       const me = appState.currentUser;
       if (!me) return [];
@@ -1789,7 +1751,7 @@
       if (rows.length === 0) {
         container.innerHTML = `
           <div class="p-8 text-center text-sm text-slate-500">
-            No private loan records match your filter. Create a loan with an accepted friend to get started.
+            No accepted loan records match your filter. Propose a loan or accept a pending loan request to see it here.
           </div>
         `;
         return;
@@ -1813,12 +1775,13 @@
             ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200">Partial</span>`
             : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">Active</span>`;
 
-        // Borrower can repay active unsettled loans; Lender can view & monitor
         const actionBtn = !isLender && !settled
           ? `<button onclick="openLoanModal('${loan.id}', true)" class="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition">Repay</button>`
           : `<button onclick="openLoanModal('${loan.id}', false)" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition">View</button>`;
 
         const deleteBtn = `<button onclick="confirmDeleteLoan('${loan.id}')" class="ml-1.5 px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-semibold transition">Delete</button>`;
+
+        return `
           <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition">
             <td class="px-4 py-3.5 text-xs font-mono font-semibold text-slate-700 whitespace-nowrap">${loan.id}</td>
             <td class="px-4 py-3.5 whitespace-nowrap">${roleBadge}</td>
@@ -1961,7 +1924,7 @@
     }
 
     // =====================================================================
-    // CREATE NEW LOAN (STRICTLY ENFORCES ACCEPTED FRIENDSHIP)
+    // CREATE NEW LOAN (STRICTLY ENFORCES ACCEPTED FRIENDSHIP & COUNTERPARTY ACCEPT)
     // =====================================================================
     function initLoanFormPickers() {
       renderBsPicker('loanBsPickerContainer', 'loanBs', getTodayBs());
@@ -2027,7 +1990,6 @@
       const hasDue = document.getElementById('hasDueDateCheckbox').checked;
       const dueBs = hasDue ? readBsPicker('dueBs') : null;
 
-      // Strict Friendship Enforcement
       if (!friendId || !areFriends(me.id, friendId)) {
         errBox.textContent = 'Blocked: You can only create a loan with an accepted friend.';
         errBox.classList.remove('hidden');
@@ -2193,7 +2155,6 @@
       const loan = appState.loans.find((l) => l.id === loanId);
       if (!me || !loan) return;
 
-      // Enforce two-party privacy
       if (loan.lender_id !== me.id && loan.borrower_id !== me.id) {
         showToast('Access denied: This loan belongs to other users.', 'error');
         return;
@@ -2408,7 +2369,6 @@
         }).join('');
       }
 
-      // Incoming & Outgoing Friend Requests
       const reqContainer = document.getElementById('friendRequestsList');
       const pendingRels = appState.friendships.filter(
         (f) => f.status === 'pending' && (f.requester_id === me.id || f.addressee_id === me.id)
@@ -2441,7 +2401,6 @@
         }).join('');
       }
 
-      // Accepted Friends List
       const acceptedFriends = getAcceptedFriendsForUser(me.id);
       document.getElementById('acceptedFriendsBadge').textContent = `${acceptedFriends.length} friend${acceptedFriends.length === 1 ? '' : 's'}`;
       const accContainer = document.getElementById('acceptedFriendsList');
@@ -2568,9 +2527,10 @@
       }
       const statusEl = document.getElementById('guideConnectionStatus');
       if (statusEl) {
+        const srcNote = supabaseConfig?.source === 'github-secrets' ? ' via GitHub Secrets (config.js)' : '';
         statusEl.textContent = supabaseClient
-          ? `Connected to Supabase project: ${supabaseConfig?.url || ''}`
-          : 'Not connected to a live Supabase project yet. Using local demo cache + instant local persistence.';
+          ? `Connected to Supabase project${srcNote}: ${supabaseConfig?.url || ''}`
+          : 'Not connected to a live Supabase project yet. Add SUPABASE_URL & SUPABASE_ANON_KEY in GitHub Secrets or enter them via "Edit URL & Key".';
       }
     }
 
@@ -2578,7 +2538,7 @@
       const statusEl = document.getElementById('guideConnectionStatus');
       if (!supabaseConfig?.url || !supabaseConfig?.anonKey || typeof window.supabase === 'undefined') {
         if (statusEl) {
-          statusEl.textContent = 'Supabase URL or Anon Key is not configured yet. Click "Edit URL & Key" to connect.';
+          statusEl.textContent = 'Supabase URL or Anon Key is not configured yet. Configure GitHub Secrets or click "Edit URL & Key".';
         }
         showToast('Enter your Supabase URL and Anon Key first.', 'info');
         return;
@@ -2694,11 +2654,28 @@ CREATE POLICY "Allow public read/write ml_loans" ON public.ml_loans FOR ALL USIN
 CREATE POLICY "Allow public read/write ml_repayments" ON public.ml_repayments FOR ALL USING (true) WITH CHECK (true);`;
 
     function loadSavedSupabaseConfig() {
+      // 1. Prefer build-time config injected via GitHub Secrets (site/config.js)
+      if (
+        window.MERO_LOAN_SUPABASE_CONFIG &&
+        typeof window.MERO_LOAN_SUPABASE_CONFIG.url === 'string' &&
+        window.MERO_LOAN_SUPABASE_CONFIG.url.startsWith('http') &&
+        typeof window.MERO_LOAN_SUPABASE_CONFIG.anonKey === 'string' &&
+        window.MERO_LOAN_SUPABASE_CONFIG.anonKey.length > 10
+      ) {
+        return {
+          url: window.MERO_LOAN_SUPABASE_CONFIG.url.trim(),
+          anonKey: window.MERO_LOAN_SUPABASE_CONFIG.anonKey.trim(),
+          source: 'github-secrets'
+        };
+      }
+      // 2. Fallback to browser localStorage config
       try {
         const raw = localStorage.getItem(STORAGE_KEY_SB_CFG);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (parsed?.url && parsed?.anonKey) return parsed;
+        if (parsed?.url && parsed?.anonKey) {
+          return { ...parsed, source: 'local-storage' };
+        }
       } catch {}
       return null;
     }
@@ -2710,9 +2687,10 @@ CREATE POLICY "Allow public read/write ml_repayments" ON public.ml_repayments FO
       const label = document.getElementById('connStatusLabel');
 
       if (connected) {
-        if (authBadge) authBadge.textContent = 'Supabase Connected';
+        const isSecret = supabaseConfig?.source === 'github-secrets';
+        if (authBadge) authBadge.textContent = isSecret ? 'Supabase Linked (GitHub Secrets)' : 'Supabase Connected';
         if (modalBadge) {
-          modalBadge.textContent = 'Connected to Supabase';
+          modalBadge.textContent = isSecret ? 'Connected via GitHub Secrets' : 'Connected to Supabase';
           modalBadge.className = 'text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
         }
         if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
@@ -2729,6 +2707,7 @@ CREATE POLICY "Allow public read/write ml_repayments" ON public.ml_repayments FO
     }
 
     async function initSupabaseIfConfigured() {
+      supabaseConfig = loadSavedSupabaseConfig();
       updateConnectionIndicators(false);
       if (!supabaseConfig?.url || !supabaseConfig?.anonKey || typeof window.supabase === 'undefined') {
         return;
@@ -2765,7 +2744,7 @@ CREATE POLICY "Allow public read/write ml_repayments" ON public.ml_repayments FO
         showToast('Enter both Supabase URL and Anon Key.', 'error');
         return;
       }
-      supabaseConfig = { url, anonKey };
+      supabaseConfig = { url, anonKey, source: 'local-storage' };
       localStorage.setItem(STORAGE_KEY_SB_CFG, JSON.stringify(supabaseConfig));
       closeSupabaseModal();
       await initSupabaseIfConfigured();
@@ -2985,7 +2964,6 @@ CREATE POLICY "Allow public read/write ml_repayments" ON public.ml_repayments FO
       }
     }
 
-    // Wire confirmation modal buttons and boot application
     document.getElementById('confirmCancelBtn')?.addEventListener('click', () => closeConfirmModal(false));
     document.getElementById('confirmProceedBtn')?.addEventListener('click', () => closeConfirmModal(true));
 
