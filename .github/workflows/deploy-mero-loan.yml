@@ -4,6 +4,7 @@ on:
 push:
 branches:
 - main
+workflow_dispatch:
 
 permissions:
 contents: read
@@ -23,7 +24,9 @@ runs-on: ubuntu-latest
 steps:
 - name: Checkout repository
 uses: actions/checkout@v4
-- name: Prepare static site with secret config
+
+
+  - name: Prepare static site with secret config
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
