@@ -19,13 +19,13 @@ jobs:
 deploy:
 environment:
 name: github-pages
-url: ${{ steps.deployment.outputs.page_url }}
+url: ${{ https://bijaykhanal99.github.io/meroloan.com/ }}
 runs-on: ubuntu-latest
 steps:
 - name: Checkout repository
 uses: actions/checkout@v4
 
-
+  
   - name: Prepare static site with secret config
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -35,8 +35,8 @@ uses: actions/checkout@v4
       cp index.html site/index.html
       cat <<EOF > site/config.js
       window.MERO_LOAN_SUPABASE_CONFIG = {
-        url: "${SUPABASE_URL}",
-        anonKey: "${SUPABASE_ANON_KEY}"
+        url: "${https://mtfvmasgbhrzkwwstras.supabase.co}",
+        anonKey: "${eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10ZnZtYXNnYmhyemt3d3N0cmFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUzNDQ1MDgsImV4cCI6MjExMDkyMDUwOH0.jINIsa8kHp8dJJd_7NGizZWe79K1LGkbmGjYj_Ukmpk}"
       };
       EOF
 
