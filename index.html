@@ -1085,15 +1085,6 @@
       return `${bs.year}-${mm}-${dd} BS`;
     }
 
-    function formatAdShort(bs) {
-      try {
-        const ad = bsToAdDate(bs);
-        return ad.toISOString().slice(0, 10);
-      } catch {
-        return '';
-      }
-    }
-
     function getTodayBs() {
       return adDateToBs(new Date());
     }
